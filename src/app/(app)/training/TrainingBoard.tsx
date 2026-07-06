@@ -52,7 +52,7 @@ export default function TrainingBoard({
 
   async function handleUpdate(
     exerciseId: string,
-    patch: Partial<Pick<Exercise, "name" | "sets" | "weight" | "notes">>
+    patch: Partial<Pick<Exercise, "name" | "sets" | "reps" | "weight" | "notes">>
   ) {
     const result = await updateExercise(exerciseId, patch);
     if (result.needsLinkDecision) {
@@ -268,12 +268,13 @@ function ExerciseCard({
 }: {
   exercise: Exercise;
   onUpdate: (
-    patch: Partial<Pick<Exercise, "name" | "sets" | "weight" | "notes">>
+    patch: Partial<Pick<Exercise, "name" | "sets" | "reps" | "weight" | "notes">>
   ) => void;
   onDelete: () => void;
 }) {
   const [name, setName] = useState(exercise.name);
   const [sets, setSets] = useState(exercise.sets ?? 0);
+  const [reps, setReps] = useState(exercise.reps ?? 0);
   const [weight, setWeight] = useState<number | null>(exercise.weight);
 
   return (
@@ -296,20 +297,36 @@ function ExerciseCard({
         </button>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-[var(--text-faint)]">
-            Sätze
-          </span>
-          <input
-            type="number"
-            value={sets}
-            onChange={(e) => setSets(parseInt(e.target.value, 10) || 0)}
-            onBlur={() => {
-              if (sets !== exercise.sets) onUpdate({ sets });
-            }}
-            className="h-[34px] w-[46px] rounded-lg border border-[var(--hairline)] bg-[var(--surface-raised)] text-center font-mono text-lg font-semibold outline-none"
-          />
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-[var(--text-faint)]">
+              Sätze
+            </span>
+            <input
+              type="number"
+              value={sets}
+              onChange={(e) => setSets(parseInt(e.target.value, 10) || 0)}
+              onBlur={() => {
+                if (sets !== exercise.sets) onUpdate({ sets });
+              }}
+              className="h-[34px] w-[42px] rounded-lg border border-[var(--hairline)] bg-[var(--surface-raised)] text-center font-mono text-lg font-semibold outline-none"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-[var(--text-faint)]">
+              Wdh.
+            </span>
+            <input
+              type="number"
+              value={reps}
+              onChange={(e) => setReps(parseInt(e.target.value, 10) || 0)}
+              onBlur={() => {
+                if (reps !== exercise.reps) onUpdate({ reps });
+              }}
+              className="h-[34px] w-[42px] rounded-lg border border-[var(--hairline)] bg-[var(--surface-raised)] text-center font-mono text-lg font-semibold outline-none"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

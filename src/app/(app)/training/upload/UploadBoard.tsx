@@ -113,7 +113,7 @@ export default function UploadBoard({ settings }: { settings: UserSettings | nul
                     className="flex-1 bg-transparent outline-none"
                   />
                   <span className="font-mono text-xs text-[var(--text-faint)]">
-                    {ex.sets ?? "–"}×{ex.weight ? ex.weight + "kg" : "–"}
+                    {ex.sets ?? "–"}×{ex.reps ?? "–"} · {ex.weight ? ex.weight + "kg" : "–"}
                   </span>
                   <button
                     onClick={() =>

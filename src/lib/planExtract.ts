@@ -4,8 +4,8 @@ import type { ExtractedDay } from "@/app/(app)/training/upload/actions";
 
 const EXTRACTION_INSTRUCTIONS =
   'Extrahiere den abgebildeten/beschriebenen Trainingsplan. Antworte AUSSCHLIESSLICH mit einem JSON-Objekt: ' +
-  '{"days": [{"label": string, "sub": string, "exercises": [{"name": string, "sets": number|null, "weight": number|null, "notes": string}]}]}. ' +
-  "Ein Eintrag pro Trainingstag (z.B. 'Push A', 'Beine', 'Tag 1'). sets ist die Anzahl Sätze (Zahl), weight das Arbeitsgewicht in kg falls angegeben (sonst null). " +
+  '{"days": [{"label": string, "sub": string, "exercises": [{"name": string, "sets": number|null, "reps": number|null, "weight": number|null, "notes": string}]}]}. ' +
+  "Ein Eintrag pro Trainingstag (z.B. 'Push A', 'Beine', 'Tag 1'). sets ist die Anzahl Sätze, reps die Wiederholungen pro Satz (z.B. bei '3x10' ist sets=3, reps=10), weight das Arbeitsgewicht in kg falls angegeben (sonst null). " +
   "Erfinde keine Übungen, die nicht im Dokument stehen.";
 
 function fileToBase64(file: File): Promise<string> {
@@ -66,10 +66,12 @@ function normalizeDays(days: unknown): ExtractedDay[] {
       exercises: exercises.map((e) => {
         const ex = e as Record<string, unknown>;
         const sets = ex.sets == null ? null : Number(ex.sets);
+        const reps = ex.reps == null ? null : Number(ex.reps);
         const weight = ex.weight == null ? null : Number(ex.weight);
         return {
           name: String(ex.name || "Übung"),
           sets: Number.isNaN(sets) ? null : sets,
+          reps: Number.isNaN(reps) ? null : reps,
           weight: Number.isNaN(weight) ? null : weight,
           notes: ex.notes ? String(ex.notes) : "",
         };

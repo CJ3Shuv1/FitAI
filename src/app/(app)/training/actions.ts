@@ -48,6 +48,7 @@ export async function addExercise(dayId: string, name: string) {
     day_id: dayId,
     name: name || "Neue Übung",
     sets: 3,
+    reps: 10,
     weight: null,
     notes: "",
     position: count ?? 0,
@@ -61,7 +62,7 @@ export async function deleteExercise(exerciseId: string) {
   revalidatePath("/training");
 }
 
-type ExercisePatch = Partial<Pick<Exercise, "name" | "sets" | "weight" | "notes">>;
+type ExercisePatch = Partial<Pick<Exercise, "name" | "sets" | "reps" | "weight" | "notes">>;
 
 export type LinkPrompt = {
   needsLinkDecision: true;
@@ -103,7 +104,7 @@ export async function updateExercise(
   if (ex.manual_group) {
     await supabase
       .from("exercises")
-      .update({ sets: ex.sets, weight: ex.weight })
+      .update({ sets: ex.sets, reps: ex.reps, weight: ex.weight })
       .eq("user_id", user.id)
       .eq("manual_group", ex.manual_group)
       .neq("id", ex.id);
@@ -141,7 +142,7 @@ export async function updateExercise(
       others.map((o) =>
         supabase
           .from("exercises")
-          .update({ name: ex.name, sets: ex.sets, weight: ex.weight })
+          .update({ name: ex.name, sets: ex.sets, reps: ex.reps, weight: ex.weight })
           .eq("id", o.id)
       )
     );
@@ -198,7 +199,7 @@ export async function resolveLinkDecision(
         others.map((o) =>
           supabase
             .from("exercises")
-            .update({ name: ex.name, sets: ex.sets, weight: ex.weight })
+            .update({ name: ex.name, sets: ex.sets, reps: ex.reps, weight: ex.weight })
             .eq("id", o.id)
         )
       );
@@ -240,7 +241,7 @@ export async function manualLink(exerciseId1: string, exerciseId2: string) {
 
   await supabase
     .from("exercises")
-    .update({ sets: ex1.sets, weight: ex1.weight })
+    .update({ sets: ex1.sets, reps: ex1.reps, weight: ex1.weight })
     .eq("id", exerciseId2)
     .eq("user_id", user.id);
 

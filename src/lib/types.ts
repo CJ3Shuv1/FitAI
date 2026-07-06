@@ -91,6 +91,7 @@ export type Exercise = {
   day_id: string;
   name: string;
   sets: number | null;
+  reps: number | null;
   weight: number | null;
   notes: string | null;
   is_pr: boolean;

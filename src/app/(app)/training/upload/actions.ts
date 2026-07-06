@@ -15,7 +15,7 @@ async function requireUser() {
 export type ExtractedDay = {
   label: string;
   sub?: string;
-  exercises: { name: string; sets: number | null; weight: number | null; notes?: string }[];
+  exercises: { name: string; sets: number | null; reps: number | null; weight: number | null; notes?: string }[];
 };
 
 // Persists the (user-reviewed, possibly edited) extraction result as new
@@ -50,6 +50,7 @@ export async function commitExtractedPlan(days: ExtractedDay[]) {
           day_id: inserted.id,
           name: ex.name,
           sets: ex.sets,
+          reps: ex.reps,
           weight: ex.weight,
           notes: ex.notes || "",
           position: i,
