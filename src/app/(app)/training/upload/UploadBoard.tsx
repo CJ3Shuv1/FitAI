@@ -13,14 +13,17 @@ export default function UploadBoard({ settings }: { settings: UserSettings | nul
   const [error, setError] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<ExtractedDay[] | null>(null);
 
-  async function handleFile(file: File) {
+  async function handleFiles(files: File[]) {
     setError(null);
     setExtracted(null);
     setLoading(true);
     try {
-      const days = await extractPlanFromFile(file, settings?.gemini_key ?? "");
+      const results = await Promise.all(
+        files.map((file) => extractPlanFromFile(file, settings?.gemini_key ?? ""))
+      );
+      const days = results.flat();
       if (days.length === 0) {
-        setError("Es konnten keine Trainingstage erkannt werden. Bitte prüfe die Datei oder lege den Plan manuell an.");
+        setError("Es konnten keine Trainingstage erkannt werden. Bitte prüfe die Datei(en) oder lege den Plan manuell an.");
       } else {
         setExtracted(days);
       }
@@ -52,19 +55,20 @@ export default function UploadBoard({ settings }: { settings: UserSettings | nul
     <div>
       <h1 className="mb-1 text-2xl font-extrabold uppercase tracking-tight">Plan hochladen</h1>
       <p className="mb-4 text-sm text-[var(--text-dim)]">
-        PDF, Foto (PNG/JPG) oder Excel (.xlsx) deines Trainingsplans — wir extrahieren die Übungen automatisch.
+        PDF, Fotos (PNG/JPG) oder Excel (.xlsx) deines Trainingsplans — auch mehrere Dateien auf einmal (z.B. ein Foto pro Trainingstag). Wir extrahieren die Übungen automatisch.
       </p>
 
       <label className="mb-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--hairline)] p-8 text-center text-sm text-[var(--text-faint)]">
-        {loading ? "Analysiere Datei…" : "Datei auswählen"}
+        {loading ? "Analysiere Datei(en)…" : "Datei(en) auswählen"}
         <input
           type="file"
           accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls"
+          multiple
           className="hidden"
           disabled={loading}
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFile(file);
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) handleFiles(files);
             e.target.value = "";
           }}
         />

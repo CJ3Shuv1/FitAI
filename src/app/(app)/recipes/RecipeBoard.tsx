@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Goal, Profile, Recipe, UserSettings } from "@/lib/types";
+import type { Food, Goal, Profile, Recipe, UserSettings } from "@/lib/types";
 import { callAI } from "@/lib/ai";
 import { createRecipe, deleteRecipe } from "./actions";
+import ManualRecipeForm from "./ManualRecipeForm";
 
 const DIFF_LABEL: Record<string, string> = {
   einfach: "Einfach (wenig Schritte, keine besonderen Techniken)",
@@ -31,13 +32,15 @@ export default function RecipeBoard({
   recipes,
   profile,
   settings,
+  foods,
 }: {
   recipes: Recipe[];
   profile: Profile | null;
   settings: UserSettings | null;
+  foods: Food[];
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"generate" | "saved">("generate");
+  const [tab, setTab] = useState<"generate" | "manual" | "saved">("generate");
   const [wish, setWish] = useState("");
   const [goal, setGoal] = useState<Goal>(profile?.goal ?? "bulk");
   const [difficulty, setDifficulty] = useState<"einfach" | "mittel" | "anspruchsvoll">("einfach");
@@ -108,22 +111,38 @@ export default function RecipeBoard({
     <div>
       <h1 className="mb-4 text-3xl font-extrabold uppercase tracking-tight">Rezepte</h1>
 
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex gap-1.5">
         <button
           onClick={() => setTab("generate")}
-          className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold ${tab === "generate" ? "border-[var(--copper-dim)] bg-[var(--surface-raised)]" : "border-[var(--hairline)] text-[var(--text-faint)]"}`}
+          className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold ${tab === "generate" ? "border-[var(--copper-dim)] bg-[var(--surface-raised)]" : "border-[var(--hairline)] text-[var(--text-faint)]"}`}
         >
-          Generieren
+          🤖 Generieren
+        </button>
+        <button
+          onClick={() => setTab("manual")}
+          className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold ${tab === "manual" ? "border-[var(--copper-dim)] bg-[var(--surface-raised)]" : "border-[var(--hairline)] text-[var(--text-faint)]"}`}
+        >
+          ✍️ Eigenes
         </button>
         <button
           onClick={() => setTab("saved")}
-          className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold ${tab === "saved" ? "border-[var(--copper-dim)] bg-[var(--surface-raised)]" : "border-[var(--hairline)] text-[var(--text-faint)]"}`}
+          className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold ${tab === "saved" ? "border-[var(--copper-dim)] bg-[var(--surface-raised)]" : "border-[var(--hairline)] text-[var(--text-faint)]"}`}
         >
           Gespeichert ({recipes.length})
         </button>
       </div>
 
-      {tab === "generate" ? (
+      {tab === "manual" ? (
+        <ManualRecipeForm
+          foods={foods}
+          settings={settings}
+          onSaved={() => {
+            setTab("saved");
+            router.refresh();
+          }}
+          showToast={showToast}
+        />
+      ) : tab === "generate" ? (
         <div>
           <div className="mb-3 flex gap-2">
             {(["bulk", "cut", "maintenance"] as const).map((g) => (

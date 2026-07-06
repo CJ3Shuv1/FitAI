@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Goal } from "@/lib/types";
+import type { ThemeName } from "@/lib/themes";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -56,6 +57,14 @@ export async function saveAISettings(formData: FormData) {
   });
 
   revalidatePath("/settings");
+}
+
+export async function saveTheme(theme: ThemeName) {
+  const { supabase, user } = await requireUser();
+  await supabase
+    .from("user_settings")
+    .upsert({ user_id: user.id, theme, updated_at: new Date().toISOString() });
+  revalidatePath("/", "layout");
 }
 
 type ImportPayload = {

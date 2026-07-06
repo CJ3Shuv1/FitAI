@@ -162,4 +162,18 @@ export type UserSettings = {
   pexels_key: string | null;
   api_ninjas_key: string | null;
   nutrition_method: "ai" | "apininjas";
+  theme: import("./themes").ThemeName;
+};
+
+export type Food = {
+  id: string;
+  user_id: string | null;
+  name: string;
+  kcal_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fett_per_100g: number;
+  zucker_per_100g: number;
+  default_unit: "g" | "ml" | "Stück";
+  piece_weight_g: number | null;
 };

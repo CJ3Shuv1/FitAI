@@ -4,23 +4,28 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Profile, UserSettings, Goal } from "@/lib/types";
 import { computeTargets, PHASE_DEFAULTS } from "@/lib/types";
+import { THEMES, THEME_LABELS, type ThemeName } from "@/lib/themes";
 import {
   exportProfileJson,
   importProfileJson,
   saveAISettings,
   saveProfile,
+  saveTheme,
 } from "./actions";
 
 export default function SettingsForm({
   profile,
   settings,
+  showOnboarding,
 }: {
   profile: Profile | null;
   settings: UserSettings | null;
+  showOnboarding: boolean;
 }) {
   const router = useRouter();
   const importInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ThemeName>(settings?.theme ?? "copper");
 
   const [weight, setWeight] = useState(profile?.weight?.toString() ?? "");
   const [height, setHeight] = useState(profile?.height?.toString() ?? "");
@@ -71,15 +76,34 @@ export default function SettingsForm({
 
   return (
     <div>
-      <h1 className="mb-6 text-3xl font-extrabold uppercase tracking-tight">
-        Einstellungen
+      <h1 className="mb-1 text-3xl font-extrabold uppercase tracking-tight">
+        Profil
       </h1>
+      <p className="mb-6 text-sm text-[var(--text-dim)]">
+        Deine Werte, deine KI-Keys, dein Look.
+      </p>
+
+      {showOnboarding && (
+        <div className="mb-6 rounded-2xl border border-[var(--copper-dim)] bg-[rgba(217,123,63,0.08)] p-4">
+          <div className="mb-1 text-base font-bold">👋 Willkommen bei FitAI!</div>
+          <p className="text-[13px] text-[var(--text-dim)]">
+            Bevor es losgeht, brauchen wir kurz deine Eckdaten (Gewicht, Größe,
+            Alter, Phase) — damit können wir deine Kalorien-/Makro-Ziele
+            berechnen. Einmalig jetzt, danach jederzeit hier im Profil-Tab
+            änderbar.
+          </p>
+        </div>
+      )}
 
       <form
         action={async (formData) => {
           await saveProfile(formData);
           showToast("Profil gespeichert");
-          router.refresh();
+          if (showOnboarding) {
+            router.push("/training");
+          } else {
+            router.refresh();
+          }
         }}
         className="mb-8 rounded-2xl border border-[var(--hairline)] bg-[var(--surface)] p-4"
       >
@@ -219,6 +243,40 @@ export default function SettingsForm({
           Profil speichern
         </button>
       </form>
+
+      <div className="mb-8 rounded-2xl border border-[var(--hairline)] bg-[var(--surface)] p-4">
+        <div className="mb-1 text-base font-bold">Erscheinungsbild</div>
+        <p className="mb-4 text-[11.5px] text-[var(--text-faint)]">
+          Wähl dein Farbschema — nur für dich, wirkt sich sofort überall aus.
+        </p>
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
+          {(Object.keys(THEMES) as ThemeName[]).map((t) => {
+            const colors = THEMES[t];
+            return (
+              <button
+                key={t}
+                onClick={async () => {
+                  setTheme(t);
+                  await saveTheme(t);
+                  router.refresh();
+                }}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 ${
+                  theme === t ? "border-[var(--copper)]" : "border-[var(--hairline)]"
+                }`}
+                style={{ background: colors.surfaceRaised }}
+              >
+                <span
+                  className="h-7 w-7 rounded-full border"
+                  style={{ background: colors.accent, borderColor: colors.accentDim }}
+                />
+                <span className="font-mono text-[10px] font-semibold" style={{ color: colors.text }}>
+                  {THEME_LABELS[t]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <form
         action={async (formData) => {

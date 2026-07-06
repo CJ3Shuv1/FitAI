@@ -100,11 +100,11 @@ export default function NutritionBoard({
             setView("day");
             setActiveDate(weekDates(weekOffset - 1)[0].key);
           }}
-          className="rounded-full border border-[var(--hairline)] px-3 py-2 text-[var(--text-faint)]"
+          className="shrink-0 rounded-full border border-[var(--hairline)] px-1.5 py-2 text-[var(--text-faint)]"
         >
           ‹
         </button>
-        <div className="flex flex-1 gap-1.5 overflow-x-auto">
+        <div className="flex min-w-0 flex-1 gap-1">
           {dates.map((d) => (
             <button
               key={d.key}
@@ -112,7 +112,7 @@ export default function NutritionBoard({
                 setActiveDate(d.key);
                 setView("day");
               }}
-              className={`flex shrink-0 flex-col items-center gap-1 rounded-xl px-3 py-2 ${
+              className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-0.5 py-2 ${
                 view === "day" && activeDate === d.key
                   ? "bg-[var(--surface-raised)] text-[var(--text)]"
                   : "text-[var(--text-faint)]"
@@ -125,7 +125,7 @@ export default function NutritionBoard({
                     : "bg-transparent"
                 }`}
               />
-              <span className="font-mono text-[11px] font-semibold uppercase">
+              <span className="font-mono text-[10px] font-semibold uppercase">
                 {d.label}
               </span>
             </button>
@@ -133,7 +133,7 @@ export default function NutritionBoard({
         </div>
         <button
           onClick={() => setView("week")}
-          className={`shrink-0 rounded-xl px-3 py-2 font-mono text-sm ${
+          className={`shrink-0 rounded-xl px-2 py-2 font-mono text-sm ${
             view === "week" ? "bg-[var(--surface-raised)] text-[var(--text)]" : "text-[var(--text-faint)]"
           }`}
         >
@@ -145,7 +145,7 @@ export default function NutritionBoard({
             setView("day");
             setActiveDate(weekDates(weekOffset + 1)[0].key);
           }}
-          className="rounded-full border border-[var(--hairline)] px-3 py-2 text-[var(--text-faint)]"
+          className="shrink-0 rounded-full border border-[var(--hairline)] px-1.5 py-2 text-[var(--text-faint)]"
         >
           ›
         </button>

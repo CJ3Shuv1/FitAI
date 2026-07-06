@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isProfileComplete, type Profile } from "@/lib/types";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
+const ONBOARDING_EXEMPT_PATHS = ["/settings", "/login", "/signup", "/auth"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -44,6 +46,22 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/training";
     return NextResponse.redirect(url);
+  }
+
+  const isOnboardingExempt = ONBOARDING_EXEMPT_PATHS.some((p) => path.startsWith(p));
+  if (user && !isOnboardingExempt) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!isProfileComplete(profile as Profile | null)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/settings";
+      url.searchParams.set("onboarding", "1");
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
