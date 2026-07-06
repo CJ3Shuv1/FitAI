@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import SettingsForm from "./SettingsForm";
+import OnboardingWizard from "./OnboardingWizard";
 import { isProfileComplete } from "@/lib/types";
 import type { Profile, UserSettings } from "@/lib/types";
 
@@ -26,11 +27,14 @@ export default async function SettingsPage({
     .eq("user_id", user!.id)
     .maybeSingle();
 
+  if (onboarding === "1" && !isProfileComplete(profile as Profile | null)) {
+    return <OnboardingWizard />;
+  }
+
   return (
     <SettingsForm
       profile={profile as Profile | null}
       settings={settings as UserSettings | null}
-      showOnboarding={onboarding === "1" && !isProfileComplete(profile as Profile | null)}
     />
   );
 }

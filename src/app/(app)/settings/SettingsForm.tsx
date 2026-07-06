@@ -12,15 +12,12 @@ import {
   saveProfile,
   saveTheme,
 } from "./actions";
-
 export default function SettingsForm({
   profile,
   settings,
-  showOnboarding,
 }: {
   profile: Profile | null;
   settings: UserSettings | null;
-  showOnboarding: boolean;
 }) {
   const router = useRouter();
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -83,27 +80,11 @@ export default function SettingsForm({
         Deine Werte, deine KI-Keys, dein Look.
       </p>
 
-      {showOnboarding && (
-        <div className="mb-6 rounded-2xl border border-[var(--copper-dim)] bg-[rgba(217,123,63,0.08)] p-4">
-          <div className="mb-1 text-base font-bold">👋 Willkommen bei FitAI!</div>
-          <p className="text-[13px] text-[var(--text-dim)]">
-            Bevor es losgeht, brauchen wir kurz deine Eckdaten (Gewicht, Größe,
-            Alter, Phase) — damit können wir deine Kalorien-/Makro-Ziele
-            berechnen. Einmalig jetzt, danach jederzeit hier im Profil-Tab
-            änderbar.
-          </p>
-        </div>
-      )}
-
       <form
         action={async (formData) => {
           await saveProfile(formData);
           showToast("Profil gespeichert");
-          if (showOnboarding) {
-            router.push("/training");
-          } else {
-            router.refresh();
-          }
+          router.refresh();
         }}
         className="mb-8 rounded-2xl border border-[var(--hairline)] bg-[var(--surface)] p-4"
       >
