@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #15140f;
+  --surface: #1e1d17;
+  --surface-raised: #262420;
+  --hairline: #3a3730;
+  --text: #ede8dd;
+  --text-dim: #9c9588;
+  --text-faint: #6b665c;
+  --steel: #8b95a1;
+  --copper: #d97b3f;
+  --copper-dim: #5e3a24;
+  --good: #7fa66b;
+
+  --background: var(--bg);
+  --foreground: var(--text);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
