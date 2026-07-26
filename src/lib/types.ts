@@ -94,7 +94,6 @@ export type Exercise = {
   reps: number | null;
   weight: number | null;
   notes: string | null;
-  is_pr: boolean;
   manual_group: string | null;
   position: number;
 };
@@ -164,6 +163,34 @@ export type UserSettings = {
   api_ninjas_key: string | null;
   nutrition_method: "ai" | "apininjas";
   theme: import("./themes").ThemeName;
+};
+
+export type MuscleGroup =
+  | "brust"
+  | "ruecken"
+  | "schultern"
+  | "bizeps"
+  | "trizeps"
+  | "beine"
+  | "core"
+  | "ganzkoerper";
+
+export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
+  brust: "Brust",
+  ruecken: "Rücken",
+  schultern: "Schultern",
+  bizeps: "Bizeps",
+  trizeps: "Trizeps",
+  beine: "Beine",
+  core: "Core",
+  ganzkoerper: "Ganzkörper",
+};
+
+export type ExerciseLibraryItem = {
+  id: string;
+  user_id: string | null;
+  name: string;
+  muscle_group: MuscleGroup;
 };
 
 export type Food = {

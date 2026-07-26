@@ -71,7 +71,7 @@ type ImportPayload = {
   profile?: Record<string, unknown>;
   trainingPlan?: Record<
     string,
-    { name: string; sets: number; reps?: number | null; weight: number | null; notes: string; isPR?: boolean }[]
+    { name: string; sets: number; reps?: number | null; weight: number | null; notes: string }[]
   >;
 };
 
@@ -122,7 +122,6 @@ export async function importProfileJson(json: string) {
           reps: ex.reps ?? null,
           weight: ex.weight,
           notes: ex.notes,
-          is_pr: !!ex.isPR,
           position: i,
         }))
       );
@@ -150,10 +149,10 @@ export async function exportProfileJson() {
 
   const trainingPlan: Record<
     string,
-    { name: string; sets: number | null; reps: number | null; weight: number | null; notes: string | null; isPR: boolean }[]
+    { name: string; sets: number | null; reps: number | null; weight: number | null; notes: string | null }[]
   > = {};
   for (const day of days || []) {
-    const exs = (day.exercises as { name: string; sets: number | null; reps: number | null; weight: number | null; notes: string | null; is_pr: boolean; position: number }[])
+    const exs = (day.exercises as { name: string; sets: number | null; reps: number | null; weight: number | null; notes: string | null; position: number }[])
       .sort((a, b) => a.position - b.position)
       .map((e) => ({
         name: e.name,
@@ -161,7 +160,6 @@ export async function exportProfileJson() {
         reps: e.reps,
         weight: e.weight,
         notes: e.notes,
-        isPR: e.is_pr,
       }));
     trainingPlan[day.label] = exs;
   }

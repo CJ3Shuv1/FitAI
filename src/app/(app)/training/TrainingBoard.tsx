@@ -2,7 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Exercise, TrainingDay } from "@/lib/types";
+import type { Exercise, ExerciseLibraryItem, MuscleGroup, TrainingDay } from "@/lib/types";
+import { MUSCLE_GROUP_LABELS } from "@/lib/types";
+import { normalizeName } from "@/lib/exerciseSync";
 import {
   addDay,
   addExercise,
@@ -17,9 +19,11 @@ import {
 export default function TrainingBoard({
   initialDays,
   initialExercises,
+  library,
 }: {
   initialDays: TrainingDay[];
   initialExercises: Exercise[];
+  library: ExerciseLibraryItem[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -145,6 +149,7 @@ export default function TrainingBoard({
           <ExerciseCard
             key={ex.id}
             exercise={ex}
+            library={library}
             onUpdate={(patch) => handleUpdate(ex.id, patch)}
             onDelete={async () => {
               if (confirm(`"${ex.name}" löschen?`)) {
@@ -263,10 +268,12 @@ function AddDayForm({ onDone }: { onDone: () => void }) {
 
 function ExerciseCard({
   exercise,
+  library,
   onUpdate,
   onDelete,
 }: {
   exercise: Exercise;
+  library: ExerciseLibraryItem[];
   onUpdate: (
     patch: Partial<Pick<Exercise, "name" | "sets" | "reps" | "weight" | "notes">>
   ) => void;
@@ -276,6 +283,7 @@ function ExerciseCard({
   const [sets, setSets] = useState(exercise.sets ?? 0);
   const [reps, setReps] = useState(exercise.reps ?? 0);
   const [weight, setWeight] = useState<number | null>(exercise.weight);
+  const [showAlternative, setShowAlternative] = useState(false);
 
   return (
     <div className="rounded-2xl border border-[var(--hairline)] bg-[var(--surface)] p-3.5">
@@ -288,6 +296,13 @@ function ExerciseCard({
           }}
           className="w-full border-b border-transparent bg-transparent text-[16px] font-semibold outline-none focus:border-dashed focus:border-[var(--copper)]"
         />
+        <button
+          onClick={() => setShowAlternative(true)}
+          className="shrink-0 rounded-lg p-1.5 text-[var(--text-faint)]"
+          title="Alternative Übung"
+        >
+          🔄
+        </button>
         <button
           onClick={onDelete}
           className="shrink-0 rounded-lg p-1.5 text-[var(--text-faint)]"
@@ -357,11 +372,94 @@ function ExerciseCard({
         </div>
       </div>
 
-      {exercise.is_pr && (
-        <div className="mt-2 inline-block rounded-md border border-[var(--copper-dim)] bg-[rgba(217,123,63,0.12)] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--copper)]">
-          PR
-        </div>
+      {showAlternative && (
+        <AlternativeModal
+          currentName={exercise.name}
+          library={library}
+          onClose={() => setShowAlternative(false)}
+          onPick={(altName) => {
+            setName(altName);
+            setWeight(null);
+            onUpdate({ name: altName, weight: null });
+            setShowAlternative(false);
+          }}
+        />
       )}
+    </div>
+  );
+}
+
+function AlternativeModal({
+  currentName,
+  library,
+  onClose,
+  onPick,
+}: {
+  currentName: string;
+  library: ExerciseLibraryItem[];
+  onClose: () => void;
+  onPick: (name: string) => void;
+}) {
+  const matched = library.find((l) => normalizeName(l.name) === normalizeName(currentName));
+  const [muscleGroup, setMuscleGroup] = useState<MuscleGroup>(matched?.muscle_group ?? "brust");
+
+  const options = library.filter(
+    (l) => l.muscle_group === muscleGroup && normalizeName(l.name) !== normalizeName(currentName)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70">
+      <div className="w-full max-w-[560px] rounded-t-2xl border border-[var(--hairline)] bg-[var(--surface-raised)] p-5">
+        <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--steel)]">
+          🔄 Alternative Übung
+        </div>
+        <div className="mb-4 text-base font-bold">{currentName}</div>
+
+        <label className="mb-3 block">
+          <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--text-faint)]">
+            Muskelgruppe
+          </span>
+          <select
+            value={muscleGroup}
+            onChange={(e) => setMuscleGroup(e.target.value as MuscleGroup)}
+            className="w-full rounded-lg border border-[var(--hairline)] bg-[var(--surface)] p-2.5 text-sm"
+          >
+            {(Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]).map((g) => (
+              <option key={g} value={g}>
+                {MUSCLE_GROUP_LABELS[g]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {!matched && (
+          <p className="mb-3 text-[11.5px] text-[var(--text-faint)]">
+            &quot;{currentName}&quot; nicht in der Übungs-Bibliothek gefunden — bitte Muskelgruppe manuell wählen.
+          </p>
+        )}
+
+        <div className="mb-4 max-h-[40vh] space-y-1.5 overflow-y-auto">
+          {options.length === 0 && (
+            <p className="text-sm text-[var(--text-faint)]">Keine Alternativen für diese Gruppe.</p>
+          )}
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => onPick(opt.name)}
+              className="w-full rounded-xl border border-[var(--hairline)] bg-[var(--surface)] p-3 text-left text-sm hover:border-[var(--copper-dim)]"
+            >
+              {opt.name}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full rounded-xl py-3.5 text-sm font-semibold text-[var(--text-dim)]"
+        >
+          Abbrechen
+        </button>
+      </div>
     </div>
   );
 }
