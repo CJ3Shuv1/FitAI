@@ -30,11 +30,22 @@ export async function runAnalysis(): Promise<
     return { error: "Bitte zuerst einen API-Key in den Einstellungen hinterlegen." };
   }
 
+  // Fetch the previous run first so every module can diff against its own
+  // slice of the last snapshot and report explicit deltas (not just current
+  // state) — this is what lets the analysis actually say "+5kg on X" instead
+  // of just restating today's numbers.
+  const { data: previous } = await supabase
+    .from("overall_analysis")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const previousSnapshot = (previous?.snapshot ?? {}) as Record<string, Record<string, unknown>>;
+
   // Every registered module contributes its own text block — this loop is
   // the only place that needs to know the modules exist, so a future tab
   // just registers itself in lib/analysisModules.ts and shows up here too.
   const summaries = await Promise.all(
-    ANALYSIS_MODULES.map((m) => m.summarize(supabase, user.id))
+    ANALYSIS_MODULES.map((m) => m.summarize(supabase, user.id, previousSnapshot[m.key] ?? null))
   );
   const present = summaries.filter((s): s is NonNullable<typeof s> => s !== null);
 
@@ -45,23 +56,13 @@ export async function runAnalysis(): Promise<
     };
   }
 
-  const { data: previous } = await supabase
-    .from("overall_analysis")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
   const snapshot = Object.fromEntries(present.map((s) => [s.key, s.snapshot]));
-
   const contextText = present.map((s) => `## ${s.label}\n${s.text}`).join("\n\n");
-  const previousText = previous
-    ? `\n\nLetzte Analyse (${new Date(previous.created_at).toLocaleDateString("de-DE")}):\n${previous.content}`
-    : "";
 
   const systemPrompt =
-    "Du bist ein ganzheitlicher, warmherziger aber ehrlicher Lebens-Coach. Der Nutzer hat eine App mit mehreren Bereichen (Training, Ernährung, Lesen, ggf. weitere). " +
-    "Du bekommst pro Bereich eine Faktenzusammenfassung. Schreibe eine kurze, zusammenhängende Gesamtanalyse auf Deutsch (max. 200 Wörter): " +
-    "Was läuft gut, was fehlt an Konsistenz, wo gibt es Zusammenhänge zwischen den Bereichen (z.B. Trainingsintensität und Ernährung, oder Lesezeit vs. Trainingszeit). " +
+    "Du bist ein ganzheitlicher, warmherziger aber ehrlicher Lebens-Coach. Der Nutzer hat eine App mit mehreren Bereichen (Training, Ernährung, Schlaf, Lesen, ggf. weitere). " +
+    "Du bekommst pro Bereich eine Faktenzusammenfassung — falls vorhanden bereits inklusive konkreter Änderungen seit der letzten Analyse (z.B. Gewichtssteigerungen bei Übungen, veränderte Kalorienzufuhr). " +
+    "Schreibe eine kurze, zusammenhängende Gesamtanalyse auf Deutsch (max. 200 Wörter): Hebe zuerst die konkreten Änderungen hervor, dann was gut läuft, was an Konsistenz fehlt, und wo es Zusammenhänge zwischen den Bereichen gibt (z.B. Trainingsintensität und Ernährung, oder Schlaf und Trainingsleistung). " +
     "Sei konkret und nutze die Zahlen, aber vermeide Floskeln. Kein Fazit-Absatz mit Wiederholung, direkt zur Sache.";
 
   try {
@@ -69,7 +70,7 @@ export async function runAnalysis(): Promise<
       settings.ai_provider,
       key,
       systemPrompt,
-      contextText + previousText,
+      contextText,
       { temperature: 0.4 }
     );
 

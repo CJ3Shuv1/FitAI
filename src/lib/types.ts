@@ -147,6 +147,13 @@ export type ShoppingListItem = {
   checked: boolean;
 };
 
+export type SleepLogEntry = {
+  id: string;
+  user_id: string;
+  date: string;
+  hours: number;
+};
+
 export type WeightLogEntry = {
   id: string;
   user_id: string;

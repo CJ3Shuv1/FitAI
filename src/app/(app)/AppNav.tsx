@@ -26,6 +26,10 @@ const AREAS: { match: (path: string) => boolean; tabs: NavItem[] }[] = [
     tabs: [{ href: "/reading", emoji: "📚", label: "Regal" }],
   },
   {
+    match: (p) => p.startsWith("/sleep"),
+    tabs: [{ href: "/sleep", emoji: "🌙", label: "Schlaf" }],
+  },
+  {
     match: (p) => p.startsWith("/analysis"),
     tabs: [{ href: "/analysis", emoji: "📊", label: "Analyse" }],
   },

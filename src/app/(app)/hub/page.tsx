@@ -7,7 +7,7 @@ export default async function HubPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ count: exerciseCount }, { count: nutritionCount }, { count: bookCount }] =
+  const [{ count: exerciseCount }, { count: nutritionCount }, { count: bookCount }, { count: sleepCount }] =
     await Promise.all([
       supabase
         .from("exercises")
@@ -19,6 +19,10 @@ export default async function HubPage() {
         .eq("user_id", user!.id),
       supabase
         .from("books")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id),
+      supabase
+        .from("sleep_log")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user!.id),
     ]);
@@ -81,6 +85,22 @@ export default async function HubPage() {
           </p>
           <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#EAF2FB]/50">
             {bookCount ?? 0} Bücher im Regal
+          </div>
+        </Link>
+
+        <Link
+          href="/sleep"
+          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E2A4A] via-[#403A66] to-[#211D38] p-6 transition-transform active:scale-[0.98]"
+        >
+          <div className="mb-3 text-4xl">🌙</div>
+          <div className="mb-1 text-2xl font-black tracking-tight text-[#EDEAF9]">
+            Schlaf
+          </div>
+          <p className="text-sm leading-relaxed text-[#EDEAF9]/70">
+            Wie viele Stunden hast du geschlafen?
+          </p>
+          <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#EDEAF9]/50">
+            {sleepCount ?? 0} Nächte erfasst
           </div>
         </Link>
 
