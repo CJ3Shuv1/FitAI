@@ -3,7 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isProfileComplete, type Profile } from "@/lib/types";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
-const ONBOARDING_EXEMPT_PATHS = ["/settings", "/login", "/signup", "/auth"];
+// The body-measurement onboarding only gates the fitness side — the hub and
+// the reading module work fine without a weight/height profile.
+const ONBOARDING_EXEMPT_PATHS = [
+  "/settings",
+  "/login",
+  "/signup",
+  "/auth",
+  "/hub",
+  "/reading",
+];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -44,7 +53,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && (path === "/login" || path === "/signup")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/training";
+    url.pathname = "/hub";
     return NextResponse.redirect(url);
   }
 

@@ -165,6 +165,20 @@ export type UserSettings = {
   theme: import("./themes").ThemeName;
 };
 
+export type Book = {
+  id: string;
+  user_id: string;
+  status: import("./bookColors").BookStatus;
+  title: string;
+  author: string | null;
+  year: number | null;
+  genres: string[];
+  notes: string[];
+  blurb: string | null;
+  note: string | null;
+  position: number;
+};
+
 export type MuscleGroup =
   | "brust"
   | "ruecken"

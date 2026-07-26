@@ -16,7 +16,7 @@ export async function signIn(_prevState: unknown, formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/training");
+  redirect("/hub");
 }
 
 export async function signUp(_prevState: unknown, formData: FormData) {
@@ -42,7 +42,7 @@ export async function signUp(_prevState: unknown, formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/training");
+  redirect("/hub");
 }
 
 export async function signOut() {
