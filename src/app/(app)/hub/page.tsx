@@ -7,16 +7,21 @@ export default async function HubPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ count: exerciseCount }, { count: bookCount }] = await Promise.all([
-    supabase
-      .from("exercises")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user!.id),
-    supabase
-      .from("books")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user!.id),
-  ]);
+  const [{ count: exerciseCount }, { count: nutritionCount }, { count: bookCount }] =
+    await Promise.all([
+      supabase
+        .from("exercises")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id),
+      supabase
+        .from("nutrition_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id),
+      supabase
+        .from("books")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id),
+    ]);
 
   return (
     <div className="pt-6">
@@ -37,13 +42,29 @@ export default async function HubPage() {
         >
           <div className="mb-3 text-4xl">🏋️</div>
           <div className="mb-1 text-2xl font-black tracking-tight text-[#1A1209]">
-            Training &amp; Ernährung
+            Training
           </div>
           <p className="text-sm leading-relaxed text-[#1A1209]/75">
-            Trainingsplan, Ernährungstagebuch, Rezepte und Einkaufsliste.
+            Dein Trainingsplan — Tage, Übungen, Sätze &amp; Gewicht.
           </p>
           <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#1A1209]/60">
             {exerciseCount ?? 0} Übungen im Plan
+          </div>
+        </Link>
+
+        <Link
+          href="/nutrition"
+          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[#2F5C42] via-[#3F7A56] to-[#20402C] p-6 transition-transform active:scale-[0.98]"
+        >
+          <div className="mb-3 text-4xl">🍽</div>
+          <div className="mb-1 text-2xl font-black tracking-tight text-[#EAF7EE]">
+            Ernährung
+          </div>
+          <p className="text-sm leading-relaxed text-[#EAF7EE]/75">
+            Ernährungstagebuch, Rezepte und Einkaufsliste.
+          </p>
+          <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#EAF7EE]/55">
+            {nutritionCount ?? 0} Tage erfasst
           </div>
         </Link>
 
@@ -53,15 +74,28 @@ export default async function HubPage() {
         >
           <div className="mb-3 text-4xl">📚</div>
           <div className="mb-1 text-2xl font-black tracking-tight text-[#EAF2FB]">
-            Mein Regal
+            Bücher
           </div>
           <p className="text-sm leading-relaxed text-[#EAF2FB]/70">
-            Bücher, die du liest, angefangen hast oder als Nächstes willst — mit
-            dem, was hängen bleibt.
+            Mein Regal — was du liest, angefangen hast oder als Nächstes willst.
           </p>
           <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#EAF2FB]/50">
             {bookCount ?? 0} Bücher im Regal
           </div>
+        </Link>
+
+        <Link
+          href="/analysis"
+          className="block overflow-hidden rounded-3xl border border-[var(--hairline)] bg-[var(--surface)] p-6 transition-transform active:scale-[0.98]"
+        >
+          <div className="mb-3 text-4xl">📊</div>
+          <div className="mb-1 text-2xl font-black tracking-tight">
+            Gesamtanalyse
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--text-dim)]">
+            Ein KI-Blick über alle Bereiche zusammen — Ernährung, Training,
+            Lesen.
+          </p>
         </Link>
       </div>
     </div>

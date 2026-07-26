@@ -12,6 +12,7 @@ const ONBOARDING_EXEMPT_PATHS = [
   "/auth",
   "/hub",
   "/reading",
+  "/analysis",
 ];
 
 export async function updateSession(request: NextRequest) {

@@ -9,6 +9,13 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "FitAI",
   },
+  other: {
+    // Next's `appleWebApp.capable` only emits the newer
+    // "mobile-web-app-capable" tag. iOS Safari still keys its "launch
+    // from home screen in standalone mode (no URL bar)" behavior off the
+    // older Apple-specific tag, so both need to be present.
+    "apple-mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {
