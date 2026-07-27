@@ -28,96 +28,102 @@ export default async function HubPage() {
     ]);
 
   return (
-    <div className="pt-6">
-      <div className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-faint)]">
+    <div className="flex h-[calc(100dvh-6.5rem)] flex-col pt-3">
+      <div className="mb-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-faint)]">
         FitAI
       </div>
-      <h1 className="mb-2 text-4xl font-black leading-none tracking-tight">
+      <h1 className="mb-1 text-[28px] font-black leading-none tracking-tight">
         Was steht an?
       </h1>
-      <p className="mb-8 text-sm text-[var(--text-dim)]">
-        Wähl deinen Bereich — du kannst jederzeit wechseln.
+      <p className="mb-4 text-[13px] text-[var(--text-dim)]">
+        Wähl deinen Bereich.
       </p>
 
-      <div className="space-y-4">
-        <Link
+      <div className="grid flex-1 grid-cols-2 gap-2.5">
+        <HubTile
           href="/training"
-          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--copper-dim)] via-[var(--copper)] to-[#B5591F] p-6 transition-transform active:scale-[0.98]"
-        >
-          <div className="mb-3 text-4xl">🏋️</div>
-          <div className="mb-1 text-2xl font-black tracking-tight text-[#1A1209]">
-            Training
-          </div>
-          <p className="text-sm leading-relaxed text-[#1A1209]/75">
-            Dein Trainingsplan — Tage, Übungen, Sätze &amp; Gewicht.
-          </p>
-          <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#1A1209]/60">
-            {exerciseCount ?? 0} Übungen im Plan
-          </div>
-        </Link>
-
-        <Link
+          emoji="🏋️"
+          title="Training"
+          stat={`${exerciseCount ?? 0} Übungen`}
+          className="bg-gradient-to-br from-[var(--copper-dim)] via-[var(--copper)] to-[#B5591F]"
+          textClass="text-[#1A1209]"
+          statClass="text-[#1A1209]/60"
+        />
+        <HubTile
           href="/nutrition"
-          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[#2F5C42] via-[#3F7A56] to-[#20402C] p-6 transition-transform active:scale-[0.98]"
-        >
-          <div className="mb-3 text-4xl">🍽</div>
-          <div className="mb-1 text-2xl font-black tracking-tight text-[#EAF7EE]">
-            Ernährung
-          </div>
-          <p className="text-sm leading-relaxed text-[#EAF7EE]/75">
-            Ernährungstagebuch, Rezepte und Einkaufsliste.
-          </p>
-          <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#EAF7EE]/55">
-            {nutritionCount ?? 0} Tage erfasst
-          </div>
-        </Link>
-
-        <Link
+          emoji="🍽"
+          title="Ernährung"
+          stat={`${nutritionCount ?? 0} Tage`}
+          className="bg-gradient-to-br from-[#2F5C42] via-[#3F7A56] to-[#20402C]"
+          textClass="text-[#EAF7EE]"
+          statClass="text-[#EAF7EE]/55"
+        />
+        <HubTile
           href="/reading"
-          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[#1F3550] via-[#2A4A6E] to-[#16283D] p-6 transition-transform active:scale-[0.98]"
-        >
-          <div className="mb-3 text-4xl">📚</div>
-          <div className="mb-1 text-2xl font-black tracking-tight text-[#EAF2FB]">
-            Bücher
-          </div>
-          <p className="text-sm leading-relaxed text-[#EAF2FB]/70">
-            Mein Regal — was du liest, angefangen hast oder als Nächstes willst.
-          </p>
-          <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#EAF2FB]/50">
-            {bookCount ?? 0} Bücher im Regal
-          </div>
-        </Link>
-
-        <Link
+          emoji="📚"
+          title="Bücher"
+          stat={`${bookCount ?? 0} im Regal`}
+          className="bg-gradient-to-br from-[#1F3550] via-[#2A4A6E] to-[#16283D]"
+          textClass="text-[#EAF2FB]"
+          statClass="text-[#EAF2FB]/50"
+        />
+        <HubTile
           href="/sleep"
-          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[#2E2A4A] via-[#403A66] to-[#211D38] p-6 transition-transform active:scale-[0.98]"
-        >
-          <div className="mb-3 text-4xl">🌙</div>
-          <div className="mb-1 text-2xl font-black tracking-tight text-[#EDEAF9]">
-            Schlaf
-          </div>
-          <p className="text-sm leading-relaxed text-[#EDEAF9]/70">
-            Wie viele Stunden hast du geschlafen?
-          </p>
-          <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.1em] text-[#EDEAF9]/50">
-            {sleepCount ?? 0} Nächte erfasst
-          </div>
-        </Link>
-
+          emoji="🌙"
+          title="Schlaf"
+          stat={`${sleepCount ?? 0} Nächte`}
+          className="bg-gradient-to-br from-[#2E2A4A] via-[#403A66] to-[#211D38]"
+          textClass="text-[#EDEAF9]"
+          statClass="text-[#EDEAF9]/50"
+        />
         <Link
           href="/analysis"
-          className="block overflow-hidden rounded-3xl border border-[var(--hairline)] bg-[var(--surface)] p-6 transition-transform active:scale-[0.98]"
+          className="col-span-2 flex items-center gap-3 overflow-hidden rounded-2xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 transition-transform active:scale-[0.98]"
         >
-          <div className="mb-3 text-4xl">📊</div>
-          <div className="mb-1 text-2xl font-black tracking-tight">
-            Gesamtanalyse
+          <span className="text-2xl">📊</span>
+          <div className="min-w-0">
+            <div className="text-base font-black tracking-tight">Gesamtanalyse</div>
+            <div className="truncate text-[11.5px] text-[var(--text-faint)]">
+              KI-Blick über alle Bereiche zusammen
+            </div>
           </div>
-          <p className="text-sm leading-relaxed text-[var(--text-dim)]">
-            Ein KI-Blick über alle Bereiche zusammen — Ernährung, Training,
-            Lesen.
-          </p>
         </Link>
       </div>
     </div>
+  );
+}
+
+function HubTile({
+  href,
+  emoji,
+  title,
+  stat,
+  className,
+  textClass,
+  statClass,
+}: {
+  href: string;
+  emoji: string;
+  title: string;
+  stat: string;
+  className: string;
+  textClass: string;
+  statClass: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex flex-col justify-between overflow-hidden rounded-2xl p-4 transition-transform active:scale-[0.98] ${className}`}
+    >
+      <span className="text-[26px] leading-none">{emoji}</span>
+      <div>
+        <div className={`mb-0.5 text-lg font-black leading-tight tracking-tight ${textClass}`}>
+          {title}
+        </div>
+        <div className={`font-mono text-[10px] uppercase tracking-[0.08em] ${statClass}`}>
+          {stat}
+        </div>
+      </div>
+    </Link>
   );
 }
