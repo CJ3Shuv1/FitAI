@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import RegisterSW from "./RegisterSW";
 
 export const metadata: Metadata = {
   title: "FitAI",
-  description: "Training, Ernährung & Rezepte — für dich, nicht für Cedric.",
+  description: "Training, Ernährung, Bücher, Schlaf — dein Alltags-Tool.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -33,7 +34,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <RegisterSW />
+      </body>
     </html>
   );
 }
