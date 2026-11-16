@@ -1,13 +1,29 @@
 export type WorldStatus = "visited" | "planned" | "wish";
 
+export type LatLng = { lat: number; lng: number };
+
 export type PhotoRef = {
   /** Path inside the private "world-photos" bucket: <user_id>/<iso3>/<uuid>.jpg */
   path: string;
   w: number;
   h: number;
+  /** Where the photo was taken; drawn as a marker on the globe. */
+  loc?: LatLng & { url: string };
 };
 
-export type WorldRoute = { title: string; url: string };
+export type WorldRoute = {
+  title: string;
+  url: string;
+  /** Waypoints read from the Google-Maps link; absent if none were found. */
+  points?: LatLng[];
+};
+
+export type WorldPlace = {
+  title: string;
+  url: string;
+  /** Null when no coordinates could be read from the link. */
+  pos: LatLng | null;
+};
 
 export type CountryEntry = {
   iso3: string;
@@ -18,6 +34,7 @@ export type CountryEntry = {
   km: number | null;
   photos: PhotoRef[];
   routes: WorldRoute[];
+  places: WorldPlace[];
 };
 
 export const WORLD_STATUSES: { key: WorldStatus; label: string; color: string }[] = [

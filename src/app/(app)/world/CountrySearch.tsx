@@ -55,6 +55,7 @@ export default function CountrySearch({
       note: existing?.note ?? null,
       km: existing?.km ?? null,
       routes: existing?.routes ?? [],
+      places: existing?.places ?? [],
     });
     setSaving(false);
     if ("error" in result) {

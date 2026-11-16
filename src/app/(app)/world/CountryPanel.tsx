@@ -7,15 +7,104 @@ import {
   WORLD_STATUSES,
   type CountryEntry,
   type PhotoRef,
+  type WorldPlace,
   type WorldRoute,
   type WorldStatus,
 } from "@/lib/world/types";
-import { addPhotos, deleteCountry, removePhoto, saveCountry } from "./actions";
+import { addPhotos, deleteCountry, removePhoto, saveCountry, setPhotoLocation } from "./actions";
 
 const fieldClass =
   "w-full rounded-lg border border-[var(--hairline)] bg-[var(--surface)] p-2.5 text-sm outline-none focus:border-[var(--copper)]";
 const labelClass =
   "mb-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--text-faint)]";
+
+type LinkItem = { title: string; url: string };
+
+/** Editable list of titled Google-Maps links (used for routes and places). */
+function LinkList<T extends LinkItem>({
+  items,
+  onChange,
+  blank,
+  noun,
+  titlePlaceholder,
+  urlPlaceholder,
+  openLabel,
+  addLabel,
+  hint,
+}: {
+  items: T[];
+  onChange: (next: T[]) => void;
+  blank: T;
+  noun: string;
+  titlePlaceholder: string;
+  urlPlaceholder: string;
+  openLabel: string;
+  addLabel: string;
+  /** Short status line under a saved item (shown on the globe or not). */
+  hint: (item: T) => string | null;
+}) {
+  return (
+    <>
+      <div className="mb-2 space-y-2">
+        {items.map((r, i) => {
+          const url = r.url.trim();
+          const note = hint(r);
+          return (
+            <div
+              key={i}
+              className="rounded-xl border border-[var(--hairline)] bg-[var(--surface)] p-2.5"
+            >
+              <div className="mb-2 flex gap-2">
+                <input
+                  value={r.title}
+                  aria-label={`Titel: ${noun} ${i + 1}`}
+                  onChange={(e) =>
+                    onChange(items.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))
+                  }
+                  placeholder={titlePlaceholder}
+                  className="min-w-0 flex-1 border-b border-[var(--hairline)] bg-transparent pb-1 text-sm outline-none focus:border-[var(--copper)]"
+                />
+                <button
+                  onClick={() => onChange(items.filter((_, j) => j !== i))}
+                  aria-label={`${noun} ${i + 1} entfernen`}
+                  className="shrink-0 px-1 text-[var(--text-faint)]"
+                >
+                  ✕
+                </button>
+              </div>
+              <input
+                value={r.url}
+                aria-label={`Link: ${noun} ${i + 1}`}
+                onChange={(e) =>
+                  onChange(items.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))
+                }
+                placeholder={urlPlaceholder}
+                className="mb-2 w-full rounded-lg border border-[var(--hairline)] bg-[var(--surface-raised)] p-2 font-mono text-[12px] outline-none focus:border-[var(--copper)]"
+              />
+              {note && <p className="mb-2 text-[11.5px] text-[var(--text-faint)]">{note}</p>}
+              {/^https?:\/\//i.test(url) && (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-lg border border-[var(--hairline)] py-2 text-center text-[13px] font-semibold text-[var(--copper)]"
+                >
+                  {openLabel} ↗
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <button
+        onClick={() => onChange([...items, blank])}
+        className="mb-4 w-full rounded-xl border border-dashed border-[var(--hairline)] p-2.5 text-sm text-[var(--text-faint)]"
+      >
+        {addLabel}
+      </button>
+    </>
+  );
+}
 
 export default function CountryPanel({
   iso3,
@@ -41,7 +130,10 @@ export default function CountryPanel({
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [lightbox, setLightbox] = useState<PhotoRef | null>(null);
+  const [places, setPlaces] = useState<WorldPlace[]>(entry?.places ?? []);
+  const [lightboxPath, setLightboxPath] = useState<string | null>(null);
+  const [locInput, setLocInput] = useState("");
+  const [locBusy, setLocBusy] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -52,12 +144,12 @@ export default function CountryPanel({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (lightbox) setLightbox(null);
+      if (lightboxPath) setLightboxPath(null);
       else onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [lightbox, onClose]);
+  }, [lightboxPath, onClose]);
 
   const edit = <T,>(setter: (v: T) => void) => (v: T) => {
     setter(v);
@@ -74,7 +166,8 @@ export default function CountryPanel({
       dateTo: dateTo || null,
       note,
       km: kmValue != null && !Number.isNaN(kmValue) ? kmValue : null,
-      routes,
+      routes: routes.map((r) => ({ title: r.title, url: r.url })),
+      places: places.map((p) => ({ title: p.title, url: p.url })),
     });
     setBusy(false);
     if ("error" in result) {
@@ -83,8 +176,48 @@ export default function CountryPanel({
     }
     setStatus(nextStatus);
     setDirty(false);
-    showToast("Gespeichert");
+    showToast(
+      result.unresolved
+        ? `Gespeichert – bei ${result.unresolved} Link${result.unresolved === 1 ? "" : "s"} wurden keine Koordinaten gefunden (nur als Link gespeichert).`
+        : "Gespeichert"
+    );
     onChanged();
+  }
+
+  async function applyLocation(location: Parameters<typeof setPhotoLocation>[2]) {
+    if (!lightboxPath) return;
+    setLocBusy(true);
+    const result = await setPhotoLocation(iso3, lightboxPath, location);
+    setLocBusy(false);
+    if ("error" in result) {
+      showToast(result.error);
+      return;
+    }
+    setLocInput("");
+    showToast(location ? "Standort gespeichert" : "Standort entfernt");
+    onChanged();
+  }
+
+  function takeDevicePosition() {
+    if (!navigator.geolocation) {
+      showToast("Dieses Gerät gibt keinen Standort frei.");
+      return;
+    }
+    setLocBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        applyLocation({
+          position: {
+            lat: Math.round(pos.coords.latitude * 1e5) / 1e5,
+            lng: Math.round(pos.coords.longitude * 1e5) / 1e5,
+          },
+        }),
+      () => {
+        setLocBusy(false);
+        showToast("Standort konnte nicht ermittelt werden (Freigabe erlaubt?).");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }
 
   async function handleFiles(files: FileList | null) {
@@ -107,6 +240,9 @@ export default function CountryPanel({
   }
 
   const photos = entry?.photos ?? [];
+  const lightbox: PhotoRef | null = photos.find((p) => p.path === lightboxPath) ?? null;
+  const savedRoutes = entry?.routes ?? [];
+  const savedPlaces = entry?.places ?? [];
   const name = countryName(iso3);
 
   return (
@@ -210,63 +346,42 @@ export default function CountryPanel({
             </label>
 
             <div className={labelClass}>Routen (Google-Maps-Links)</div>
-            <div className="mb-2 space-y-2">
-              {routes.map((r, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-[var(--hairline)] bg-[var(--surface)] p-2.5"
-                >
-                  <div className="mb-2 flex gap-2">
-                    <input
-                      value={r.title}
-                      aria-label={`Titel der Route ${i + 1}`}
-                      onChange={(e) =>
-                        edit(setRoutes)(
-                          routes.map((x, j) => (j === i ? { ...x, title: e.target.value } : x))
-                        )
-                      }
-                      placeholder="Titel (z. B. Küstenstraße SH8)"
-                      className="min-w-0 flex-1 border-b border-[var(--hairline)] bg-transparent pb-1 text-sm outline-none focus:border-[var(--copper)]"
-                    />
-                    <button
-                      onClick={() => edit(setRoutes)(routes.filter((_, j) => j !== i))}
-                      aria-label={`Route ${i + 1} entfernen`}
-                      className="shrink-0 px-1 text-[var(--text-faint)]"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <input
-                    value={r.url}
-                    aria-label={`Link der Route ${i + 1}`}
-                    inputMode="url"
-                    onChange={(e) =>
-                      edit(setRoutes)(
-                        routes.map((x, j) => (j === i ? { ...x, url: e.target.value } : x))
-                      )
-                    }
-                    placeholder="https://maps.app.goo.gl/…"
-                    className="mb-2 w-full rounded-lg border border-[var(--hairline)] bg-[var(--surface-raised)] p-2 font-mono text-[12px] outline-none focus:border-[var(--copper)]"
-                  />
-                  {/^https?:\/\//i.test(r.url.trim()) && (
-                    <a
-                      href={r.url.trim()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block rounded-lg border border-[var(--hairline)] py-2 text-center text-[13px] font-semibold text-[var(--copper)]"
-                    >
-                      Route öffnen ↗
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => edit(setRoutes)([...routes, { title: "", url: "" }])}
-              className="mb-4 w-full rounded-xl border border-dashed border-[var(--hairline)] p-2.5 text-sm text-[var(--text-faint)]"
-            >
-              + Route hinzufügen
-            </button>
+            <LinkList
+              items={routes}
+              onChange={edit(setRoutes)}
+              blank={{ title: "", url: "" }}
+              noun="Route"
+              titlePlaceholder="Titel (z. B. Küstenstraße SH8)"
+              urlPlaceholder="https://maps.app.goo.gl/…"
+              openLabel="Route öffnen"
+              addLabel="+ Route hinzufügen"
+              hint={(r) => {
+                const saved = savedRoutes.find((x) => x.url === r.url.trim());
+                if (!saved) return null;
+                return saved.points
+                  ? `Auf dem Globus eingezeichnet (${saved.points.length} Punkte, Luftlinie)`
+                  : "Nur als Link – im Link stecken keine Wegpunkte.";
+              }}
+            />
+
+            <div className={labelClass}>Orte (Google-Maps-Link oder Koordinaten)</div>
+            <LinkList
+              items={places}
+              onChange={edit(setPlaces)}
+              blank={{ title: "", url: "", pos: null }}
+              noun="Ort"
+              titlePlaceholder="Name (z. B. Blaue Grotte)"
+              urlPlaceholder="Maps-Link oder 35.8989, 14.5146"
+              openLabel="Ort öffnen"
+              addLabel="+ Ort hinzufügen"
+              hint={(p) => {
+                const saved = savedPlaces.find((x) => x.url === p.url.trim());
+                if (!saved) return null;
+                return saved.pos
+                  ? "📍 Auf dem Globus markiert"
+                  : "Nur als Link – keine Koordinaten gefunden.";
+              }}
+            />
 
             {dirty && (
               <button
@@ -284,10 +399,18 @@ export default function CountryPanel({
                 {photos.map((p) => (
                   <button
                     key={p.path}
-                    onClick={() => setLightbox(p)}
-                    aria-label="Foto groß anzeigen"
-                    className="aspect-square overflow-hidden rounded-lg bg-[var(--surface)]"
+                    onClick={() => {
+                      setLocInput("");
+                      setLightboxPath(p.path);
+                    }}
+                    aria-label={p.loc ? "Foto groß anzeigen (mit Standort)" : "Foto groß anzeigen"}
+                    className="relative aspect-square overflow-hidden rounded-lg bg-[var(--surface)]"
                   >
+                    {p.loc && (
+                      <span className="absolute bottom-1 right-1 rounded-full bg-black/60 px-1 text-[11px]">
+                        📍
+                      </span>
+                    )}
                     {photoUrls[p.path] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -319,7 +442,7 @@ export default function CountryPanel({
 
             <button
               onClick={async () => {
-                if (!confirm(`„${name}“ samt Notiz, Routen und Fotos entfernen?`)) return;
+                if (!confirm(`„${name}“ samt Notiz, Routen, Orten und Fotos entfernen?`)) return;
                 const result = await deleteCountry(iso3);
                 if ("error" in result) showToast(result.error);
                 else {
@@ -342,7 +465,7 @@ export default function CountryPanel({
           aria-modal="true"
           aria-label="Foto-Großansicht"
           className="fixed inset-0 z-50 flex flex-col bg-black/90"
-          onClick={() => setLightbox(null)}
+          onClick={() => setLightboxPath(null)}
         >
           <div className="flex justify-between p-3" onClick={(e) => e.stopPropagation()}>
             <button
@@ -351,7 +474,7 @@ export default function CountryPanel({
                 const result = await removePhoto(iso3, lightbox.path);
                 if ("error" in result) showToast(result.error);
                 else {
-                  setLightbox(null);
+                  setLightboxPath(null);
                   onChanged();
                 }
               }}
@@ -360,7 +483,7 @@ export default function CountryPanel({
               Foto löschen
             </button>
             <button
-              onClick={() => setLightbox(null)}
+              onClick={() => setLightboxPath(null)}
               aria-label="Großansicht schließen"
               className="h-10 w-10 rounded-lg text-xl text-white"
             >
@@ -375,6 +498,63 @@ export default function CountryPanel({
                 alt={`Foto aus ${name}`}
                 className="max-h-full max-w-full rounded-lg object-contain"
               />
+            )}
+          </div>
+          <div
+            className="mx-auto w-full max-w-[560px] p-3 pb-6 text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {lightbox.loc ? (
+              <div className="flex items-center gap-2 text-[13px]">
+                <span className="min-w-0 flex-1 truncate">
+                  📍 {lightbox.loc.lat.toFixed(4)}, {lightbox.loc.lng.toFixed(4)} · auf dem Globus
+                  markiert
+                </span>
+                <a
+                  href={lightbox.loc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 rounded-lg border border-white/30 px-3 py-2 font-semibold"
+                >
+                  In Maps ↗
+                </a>
+                <button
+                  disabled={locBusy}
+                  onClick={() => applyLocation(null)}
+                  className="shrink-0 rounded-lg px-2 py-2 text-white/70"
+                >
+                  Entfernen
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="mb-1.5 text-[11px] uppercase tracking-[0.1em] text-white/60">
+                  Wo war das? (Google-Maps-Link oder Koordinaten)
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={locInput}
+                    onChange={(e) => setLocInput(e.target.value)}
+                    aria-label="Standort des Fotos"
+                    placeholder="https://maps.app.goo.gl/…"
+                    className="min-w-0 flex-1 rounded-lg border border-white/25 bg-white/10 p-2.5 font-mono text-[12px] text-white outline-none placeholder:text-white/40"
+                  />
+                  <button
+                    disabled={locBusy || locInput.trim() === ""}
+                    onClick={() => applyLocation({ link: locInput })}
+                    className="shrink-0 rounded-lg bg-[var(--copper)] px-3 text-sm font-bold text-[#1A1209] disabled:opacity-50"
+                  >
+                    {locBusy ? "…" : "Speichern"}
+                  </button>
+                </div>
+                <button
+                  disabled={locBusy}
+                  onClick={takeDevicePosition}
+                  className="mt-2 w-full rounded-lg border border-white/25 py-2.5 text-[13px] disabled:opacity-50"
+                >
+                  📍 Aktuellen Standort verwenden
+                </button>
+              </>
             )}
           </div>
         </div>

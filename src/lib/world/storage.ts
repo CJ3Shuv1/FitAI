@@ -3,6 +3,7 @@ import {
   WORLD_PHOTO_BUCKET,
   type CountryEntry,
   type PhotoRef,
+  type WorldPlace,
   type WorldRoute,
   type WorldStatus,
 } from "./types";
@@ -21,6 +22,8 @@ type WorldRow = {
   km: number | null;
   photos: PhotoRef[] | null;
   routes: WorldRoute[] | null;
+  /** Missing until migration 0011 has run. */
+  places?: WorldPlace[] | null;
 };
 
 export function rowToEntry(row: WorldRow): CountryEntry {
@@ -33,6 +36,7 @@ export function rowToEntry(row: WorldRow): CountryEntry {
     km: row.km,
     photos: Array.isArray(row.photos) ? row.photos : [],
     routes: Array.isArray(row.routes) ? row.routes : [],
+    places: Array.isArray(row.places) ? row.places : [],
   };
 }
 
@@ -47,7 +51,7 @@ export type WorldData = {
 export async function loadWorld(supabase: SupabaseClient, userId: string): Promise<WorldData> {
   const { data, error } = await supabase
     .from("world_countries")
-    .select("iso3, status, date_from, date_to, note, km, photos, routes")
+    .select("*")
     .eq("user_id", userId);
 
   if (error) {

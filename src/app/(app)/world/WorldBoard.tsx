@@ -9,7 +9,7 @@ import {
   type CountryEntry,
   type WorldStatus,
 } from "@/lib/world/types";
-import GlobeView from "./GlobeView";
+import GlobeView, { type GlobeMarker, type GlobeRoute } from "./GlobeView";
 import CountryPanel from "./CountryPanel";
 import CountrySearch from "./CountrySearch";
 
@@ -29,7 +29,7 @@ export default function WorldBoard({
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2200);
+    setTimeout(() => setToast(null), msg.length > 40 ? 5000 : 2200);
   }, []);
 
   const byIso3 = useMemo(
@@ -42,6 +42,39 @@ export default function WorldBoard({
         string,
         WorldStatus
       >,
+    [initialEntries]
+  );
+
+  const globeRoutes = useMemo<GlobeRoute[]>(
+    () =>
+      initialEntries.flatMap((e) =>
+        e.routes
+          .filter((r) => r.points && r.points.length >= 2)
+          .map((r) => ({ iso3: e.iso3, title: r.title, points: r.points! }))
+      ),
+    [initialEntries]
+  );
+  const globeMarkers = useMemo<GlobeMarker[]>(
+    () =>
+      initialEntries.flatMap((e) => [
+        ...e.places
+          .filter((p) => p.pos)
+          .map((p) => ({
+            ...p.pos!,
+            iso3: e.iso3,
+            kind: "place" as const,
+            label: p.title || `Ort in ${countryName(e.iso3)}`,
+          })),
+        ...e.photos
+          .filter((p) => p.loc)
+          .map((p) => ({
+            lat: p.loc!.lat,
+            lng: p.loc!.lng,
+            iso3: e.iso3,
+            kind: "photo" as const,
+            label: `Foto aus ${countryName(e.iso3)}`,
+          })),
+      ]),
     [initialEntries]
   );
 
@@ -101,7 +134,13 @@ export default function WorldBoard({
         </div>
       )}
 
-      <GlobeView statusByIso3={statusByIso3} selectedIso3={selected} onSelect={setSelected} />
+      <GlobeView
+        statusByIso3={statusByIso3}
+        selectedIso3={selected}
+        routes={globeRoutes}
+        markers={globeMarkers}
+        onSelect={setSelected}
+      />
 
       {initialEntries.length === 0 ? (
         <div className="mt-2 rounded-2xl border border-dashed border-[var(--hairline)] p-6 text-center">
@@ -144,6 +183,7 @@ export default function WorldBoard({
                         {meta.label}
                         {e.photos.length > 0 && ` · ${e.photos.length} 📷`}
                         {e.routes.length > 0 && ` · ${e.routes.length} 🧭`}
+                        {e.places.length > 0 && ` · ${e.places.length} 📍`}
                       </span>
                     </button>
                   </li>
@@ -164,7 +204,8 @@ export default function WorldBoard({
 
       {selected && (
         <CountryPanel
-          key={selected}
+          // Remount once the saved entry arrives, so the form starts from it.
+          key={`${selected}:${byIso3[selected] ? "saved" : "new"}`}
           iso3={selected}
           entry={byIso3[selected]}
           photoUrls={photoUrls}
