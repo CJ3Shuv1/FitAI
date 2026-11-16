@@ -220,25 +220,83 @@ const validPos = (pos: unknown): pos is LatLng => {
  * Records already-uploaded photos (see lib/world/photoStore) on the entry.
  * `gps` is the position read from the photo's EXIF data, if it had one.
  */
-export async function addPhotos(
-  iso3: string,
-  uploads: { path: string; thumb: string; w: number; h: number; gps: LatLng | null }[]
-): Promise<Result> {
+export async function addPhotos(iso3: string, uploads: PhotoUpload[]): Promise<Result> {
   return updatePhotos(iso3, (photos, userId) => {
-    const prefix = `${userId}/${iso3}/`;
-    const bad = uploads.some(
-      (u) => !u.path.startsWith(prefix) || (u.thumb !== "" && !u.thumb.startsWith(prefix))
-    );
-    if (bad) return { error: "Ungültiger Foto-Pfad." };
-    const added: PhotoRef[] = uploads.map((u) => ({
-      path: u.path,
-      w: u.w,
-      h: u.h,
-      ...(u.thumb ? { thumb: u.thumb } : {}),
-      ...(validPos(u.gps) ? { loc: { lat: u.gps.lat, lng: u.gps.lng, url: mapsUrl(u.gps) } } : {}),
-    }));
-    return [...photos, ...added];
+    const added = toPhotoRefs(uploads, `${userId}/${iso3}/`);
+    return Array.isArray(added) ? [...photos, ...added] : added;
   });
+}
+
+type PhotoUpload = { path: string; thumb: string; w: number; h: number; gps: LatLng | null };
+
+/** Checks that uploads sit in the user's own country folder and converts them. */
+function toPhotoRefs(uploads: PhotoUpload[], prefix: string): PhotoRef[] | { error: string } {
+  const bad = uploads.some(
+    (u) => !u.path.startsWith(prefix) || (u.thumb !== "" && !u.thumb.startsWith(prefix))
+  );
+  if (bad) return { error: "Ungültiger Foto-Pfad." };
+  return uploads.map((u) => ({
+    path: u.path,
+    w: u.w,
+    h: u.h,
+    ...(u.thumb ? { thumb: u.thumb } : {}),
+    ...(validPos(u.gps) ? { loc: { lat: u.gps.lat, lng: u.gps.lng, url: mapsUrl(u.gps) } } : {}),
+  }));
+}
+
+const isDate = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+/**
+ * Photo import: having taken photos there means you've been there, so the
+ * country is created or set to "visited", empty travel dates are filled
+ * from the capture dates, and the uploaded photos are attached.
+ */
+export async function importCountryPhotos(
+  iso3: string,
+  uploads: PhotoUpload[],
+  taken: { from: string | null; to: string | null }
+): Promise<Result> {
+  const { supabase, user } = await requireUser();
+  if (!/^[A-Z]{3}$/.test(iso3)) return { error: "Unbekanntes Land." };
+
+  const added = toPhotoRefs(uploads, `${user.id}/${iso3}/`);
+  if (!Array.isArray(added)) return added;
+  const from = isDate(taken.from) ? taken.from : null;
+  const to = isDate(taken.to) ? taken.to : from;
+
+  const { data: row } = await supabase
+    .from("world_countries")
+    .select("photos, date_from, date_to")
+    .eq("user_id", user.id)
+    .eq("iso3", iso3)
+    .maybeSingle();
+
+  const now = new Date().toISOString();
+  const { error } = row
+    ? await supabase
+        .from("world_countries")
+        .update({
+          status: "visited",
+          photos: [...((row.photos as PhotoRef[] | null) ?? []), ...added],
+          // Only fill dates that are still empty — never overwrite a trip.
+          ...(row.date_from || row.date_to ? {} : { date_from: from, date_to: to }),
+          updated_at: now,
+        })
+        .eq("user_id", user.id)
+        .eq("iso3", iso3)
+    : await supabase.from("world_countries").insert({
+        user_id: user.id,
+        iso3,
+        status: "visited",
+        date_from: from,
+        date_to: to,
+        photos: added,
+        routes: [],
+        updated_at: now,
+      });
+
+  if (error) return { error: "Speichern fehlgeschlagen: " + error.message };
+  return done();
 }
 
 export async function removePhoto(iso3: string, path: string): Promise<Result> {

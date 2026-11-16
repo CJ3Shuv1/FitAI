@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { countryName } from "@/lib/world/countries";
 import {
@@ -12,6 +12,7 @@ import {
 import GlobeView, { type GlobeMarker, type GlobeRoute } from "./GlobeView";
 import CountryPanel from "./CountryPanel";
 import CountrySearch from "./CountrySearch";
+import PhotoImport from "./PhotoImport";
 
 export default function WorldBoard({
   initialEntries,
@@ -26,6 +27,9 @@ export default function WorldBoard({
   const [selected, setSelected] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [importFiles, setImportFiles] = useState<File[] | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const closeImport = useCallback(() => setImportFiles(null), []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -124,7 +128,7 @@ export default function WorldBoard({
         </button>
       </div>
 
-      <div className="mb-1 flex flex-wrap gap-1.5">
+      <div className="mb-1 flex flex-wrap items-center gap-1.5">
         {WORLD_STATUSES.map((s) => (
           <span
             key={s.key}
@@ -134,6 +138,26 @@ export default function WorldBoard({
             {s.label} {initialEntries.filter((e) => e.status === s.key).length}
           </span>
         ))}
+        {!setupMissing && (
+          <button
+            onClick={() => importInputRef.current?.click()}
+            className="ml-auto rounded-full border border-[var(--copper-dim)] bg-[rgba(217,123,63,0.1)] px-3 py-1 text-[12px] font-semibold text-[var(--copper)]"
+          >
+            📷 Fotos hochladen
+          </button>
+        )}
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const picked = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            if (picked.length) setImportFiles(picked);
+          }}
+        />
       </div>
 
       {setupMissing && (
@@ -159,12 +183,22 @@ export default function WorldBoard({
             Tipp ein Land auf dem Globus an oder such es über den Button — besucht, geplant oder
             Wunsch.
           </p>
-          <button
-            onClick={() => setShowSearch(true)}
-            className="rounded-xl bg-[var(--copper)] px-5 py-2.5 text-sm font-bold text-[#1A1209]"
-          >
-            ＋ Land eintragen
-          </button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              onClick={() => setShowSearch(true)}
+              className="rounded-xl bg-[var(--copper)] px-5 py-2.5 text-sm font-bold text-[#1A1209]"
+            >
+              ＋ Land eintragen
+            </button>
+            {!setupMissing && (
+              <button
+                onClick={() => importInputRef.current?.click()}
+                className="rounded-xl border border-[var(--copper-dim)] px-5 py-2.5 text-sm font-bold text-[var(--copper)]"
+              >
+                📷 Aus Fotos erkennen
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="mt-3">
@@ -233,6 +267,20 @@ export default function WorldBoard({
           onSaved={(iso3) => {
             setShowSearch(false);
             setSelected(iso3);
+            router.refresh();
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {importFiles && (
+        <PhotoImport
+          files={importFiles}
+          entries={byIso3}
+          onClose={closeImport}
+          onDone={(iso3s) => {
+            setImportFiles(null);
+            if (iso3s.length === 1) selectFromGlobe(iso3s[0]);
             router.refresh();
           }}
           showToast={showToast}

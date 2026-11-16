@@ -2,12 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GlobeInstance } from "globe.gl";
-import type { Feature, FeatureCollection, Geometry, Position } from "geojson";
-import type { GeometryCollection, Topology } from "topojson-specification";
-import { countryName, iso3ForFeature } from "@/lib/world/countries";
+import type { Geometry, Position } from "geojson";
+import { countryName } from "@/lib/world/countries";
+import { loadCountryFeatures, type CountryFeature } from "@/lib/world/geo";
 import { statusMeta, type LatLng, type WorldStatus } from "@/lib/world/types";
-
-type CountryFeature = Feature<Geometry, { name: string; iso3: string | null }>;
 
 export type GlobeRoute = { iso3: string; title: string; points: LatLng[] };
 export type GlobeMarker = LatLng & {
@@ -138,24 +136,11 @@ export default function GlobeView({
     (async () => {
       try {
         const low = isLowEnd();
-        const [{ default: Globe }, topojson, atlas] = await Promise.all([
+        const [{ default: Globe }, features] = await Promise.all([
           import("globe.gl"),
-          import("topojson-client"),
-          import("world-atlas/countries-50m.json"),
+          loadCountryFeatures(),
         ]);
         if (disposed) return;
-
-        const topology = atlas.default as unknown as Topology<{
-          countries: GeometryCollection<{ name: string }>;
-        }>;
-        const collection = topojson.feature(
-          topology,
-          topology.objects.countries
-        ) as FeatureCollection<Geometry, { name: string }>;
-        const features: CountryFeature[] = collection.features.map((f) => ({
-          ...f,
-          properties: { name: f.properties.name, iso3: iso3ForFeature(f.id, f.properties.name) },
-        }));
         featuresRef.current = features;
 
         const ocean = cssVar(el, "--surface", "#1E1D17");
