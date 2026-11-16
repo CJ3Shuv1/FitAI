@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { resolveMapsLink } from "@/lib/world/mapsLink";
+import { ROUTING_GAP_MS, routeAlong, travelModeOf } from "@/lib/world/routing";
 import {
   WORLD_PHOTO_BUCKET,
   type LatLng,
@@ -12,7 +13,15 @@ import {
   type WorldStatus,
 } from "@/lib/world/types";
 
-type Result = { ok: true; unresolved?: number } | { error: string };
+type Result =
+  | {
+      ok: true;
+      /** Links in which no coordinates were found. */
+      unresolved?: number;
+      /** Routes drawn as straight lines because no road course was found. */
+      straight?: number;
+    }
+  | { error: string };
 
 const STATUSES: WorldStatus[] = ["visited", "planned", "wish"];
 const isLinkOrCoords = (s: string) => /^https?:\/\//i.test(s) || /^-?\d/.test(s);
@@ -26,7 +35,7 @@ async function requireUser() {
   return { supabase, user };
 }
 
-function done(extra?: { unresolved: number }): Result {
+function done(extra?: { unresolved: number; straight: number }): Result {
   revalidatePath("/world");
   revalidatePath("/hub");
   return { ok: true, ...extra };
@@ -74,18 +83,32 @@ export async function saveCountry(input: CountryInput): Promise<Result> {
   const oldRoutes = ((existing?.routes as WorldRoute[] | null) ?? []).filter((r) => r.points);
   const oldPlaces = ((existing?.places as WorldPlace[] | null) ?? []).filter((p) => p.pos);
   let unresolved = 0;
+  let straight = 0;
 
-  const routes: WorldRoute[] = await Promise.all(
-    routeInputs.map(async (r) => {
-      const known = oldRoutes.find((o) => o.url === r.url)?.points;
-      const points = known ?? (await resolveMapsLink(r.url));
-      if (points.length < 2) {
-        unresolved++;
-        return r;
-      }
-      return { ...r, points };
-    })
-  );
+  // One after another: the routing service allows ~1 request per second.
+  const routes: WorldRoute[] = [];
+  let lastRoutingCall = 0;
+  for (const r of routeInputs) {
+    const old = oldRoutes.find((o) => o.url === r.url);
+    const points = old?.points ?? (await resolveMapsLink(r.url));
+    if (points.length < 2) {
+      unresolved++;
+      routes.push(r);
+      continue;
+    }
+    const mode = travelModeOf(r.url);
+    // Keep an already computed course; retry ones that failed before.
+    if (old?.path && old.mode === mode) {
+      routes.push({ ...r, points, mode, path: old.path, km: old.km });
+      continue;
+    }
+    const wait = lastRoutingCall + ROUTING_GAP_MS - Date.now();
+    if (wait > 0) await new Promise((res) => setTimeout(res, wait));
+    lastRoutingCall = Date.now();
+    const routed = await routeAlong(points, mode);
+    if (!routed) straight++;
+    routes.push(routed ? { ...r, points, mode, ...routed } : { ...r, points, mode });
+  }
 
   const places: WorldPlace[] = await Promise.all(
     placeInputs.map(async (p) => {
@@ -124,7 +147,7 @@ export async function saveCountry(input: CountryInput): Promise<Result> {
     }
     return { error: "Speichern fehlgeschlagen: " + error.message };
   }
-  return done({ unresolved });
+  return done({ unresolved, straight });
 }
 
 export async function deleteCountry(iso3: string): Promise<Result> {

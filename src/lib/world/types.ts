@@ -18,7 +18,15 @@ export type WorldRoute = {
   url: string;
   /** Waypoints read from the Google-Maps link; absent if none were found. */
   points?: LatLng[];
+  /** Travel mode from the link (car/bike/foot; "other" = transit etc.). */
+  mode?: TravelMode;
+  /** Road course through the waypoints (OSM routing); absent → straight lines. */
+  path?: LatLng[];
+  /** Length of `path` in km. */
+  km?: number;
 };
+
+export type TravelMode = "car" | "bike" | "foot" | "other";
 
 export type WorldPlace = {
   title: string;

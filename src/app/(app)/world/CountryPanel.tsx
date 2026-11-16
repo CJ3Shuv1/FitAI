@@ -179,11 +179,18 @@ export default function CountryPanel({
     }
     setStatus(nextStatus);
     setDirty(false);
-    showToast(
-      result.unresolved
-        ? `Gespeichert – bei ${result.unresolved} Link${result.unresolved === 1 ? "" : "s"} wurden keine Koordinaten gefunden (nur als Link gespeichert).`
-        : "Gespeichert"
-    );
+    const notes: string[] = [];
+    if (result.unresolved) {
+      notes.push(
+        `bei ${result.unresolved} Link${result.unresolved === 1 ? "" : "s"} keine Koordinaten gefunden (nur als Link gespeichert)`
+      );
+    }
+    if (result.straight) {
+      notes.push(
+        `${result.straight} Route${result.straight === 1 ? "" : "n"} ohne Straßenverlauf (Luftlinie)`
+      );
+    }
+    showToast(notes.length ? `Gespeichert – ${notes.join(", ")}.` : "Gespeichert");
     onChanged();
   }
 
@@ -254,6 +261,8 @@ export default function CountryPanel({
   const photos = entry?.photos ?? [];
   const lightbox: PhotoRef | null = photos.find((p) => p.path === lightboxPath) ?? null;
   const savedRoutes = entry?.routes ?? [];
+  const routeKm =
+    Math.round(savedRoutes.reduce((sum, r) => sum + (r.path ? (r.km ?? 0) : 0), 0) * 10) / 10;
   const savedPlaces = entry?.places ?? [];
   const name = countryName(iso3);
 
@@ -345,6 +354,15 @@ export default function CountryPanel({
                 placeholder="z. B. 850"
                 className={fieldClass}
               />
+              {routeKm > 0 && parseFloat(km.replace(",", ".")) !== routeKm && (
+                <button
+                  type="button"
+                  onClick={() => edit(setKm)(String(routeKm))}
+                  className="mt-1.5 text-[12px] font-semibold text-[var(--copper)]"
+                >
+                  Aus Routen übernehmen: {routeKm.toLocaleString("de-DE")} km
+                </button>
+              )}
             </label>
 
             <label className="mb-4 block">
@@ -370,9 +388,14 @@ export default function CountryPanel({
               hint={(r) => {
                 const saved = savedRoutes.find((x) => x.url === r.url.trim());
                 if (!saved) return null;
-                return saved.points
-                  ? `Auf dem Globus eingezeichnet (${saved.points.length} Punkte, Luftlinie)`
-                  : "Nur als Link – im Link stecken keine Wegpunkte.";
+                if (!saved.points) return "Nur als Link – im Link stecken keine Wegpunkte.";
+                if (saved.path) {
+                  const how = { car: "🚗", bike: "🚲", foot: "🚶", other: "" }[saved.mode ?? "car"];
+                  return `${how} Straßenverlauf auf dem Globus · ${saved.km?.toLocaleString("de-DE")} km`;
+                }
+                return saved.mode === "other"
+                  ? "Als Luftlinie eingezeichnet (ÖPNV/Flug lässt sich nicht berechnen)."
+                  : "Als Luftlinie eingezeichnet – Straßenverlauf nicht gefunden, beim nächsten Speichern neuer Versuch.";
               }}
             />
 

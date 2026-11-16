@@ -28,6 +28,29 @@ const ROUTE_COLOR = "#E0603A";
 // to see or hit at normal zoom, so marked ones also get a dot.
 const TINY_COUNTRY_DEG = 1.6;
 
+// Heights in globe radii (1 = ~6371 km). Kept low so routes and markers
+// sit close to the ground and don't drift sideways when zoomed in.
+const ALT_LAND = 0.004;
+const ALT_MARKED = 0.007;
+const ALT_SELECTED = 0.01;
+const ROUTE_ALT = 0.0105;
+
+/** Line width in degrees: ~1/40 of the route's extent, within sane limits. */
+function strokeFor(points: LatLng[]) {
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  for (const p of points) {
+    minLat = Math.min(minLat, p.lat);
+    maxLat = Math.max(maxLat, p.lat);
+    minLng = Math.min(minLng, p.lng);
+    maxLng = Math.max(maxLng, p.lng);
+  }
+  const extent = Math.max(maxLat - minLat, maxLng - minLng);
+  return Math.min(0.3, Math.max(0.006, extent / 40));
+}
+
 // Weak devices keep the same 50m outlines (so small states like Malta or
 // Liechtenstein always exist) but render with a lower pixel ratio, no
 // antialiasing and coarser curvature.
@@ -176,12 +199,15 @@ export default function GlobeView({
           .pathPoints((d) => (d as GlobeRoute).points)
           .pathPointLat((p) => (p as LatLng).lat)
           .pathPointLng((p) => (p as LatLng).lng)
-          .pathPointAlt(0.02)
+          // Just above the raised countries, so the line hugs the roads.
+          .pathPointAlt(ROUTE_ALT)
           .pathColor(() => ROUTE_COLOR)
-          .pathStroke(low ? null : 0.35)
+          // Width is in degrees: scale with the route so a 30 km island tour
+          // stays a line and a cross-continent trip is still visible.
+          .pathStroke(low ? null : (d) => strokeFor((d as GlobeRoute).points))
           .pathTransitionDuration(0)
           // Places, photo locations and tiny countries: tappable dots.
-          .htmlAltitude(0.025)
+          .htmlAltitude(ROUTE_ALT + 0.001)
           .htmlTransitionDuration(0)
           .htmlElement((d) => {
             const m = d as RenderedMarker;
@@ -274,19 +300,21 @@ export default function GlobeView({
       })
       .polygonAltitude((d) => {
         const iso3 = (d as CountryFeature).properties.iso3;
-        if (iso3 && iso3 === selectedRef.current) return 0.035;
-        return iso3 && statusRef.current[iso3] ? 0.014 : 0.006;
+        if (iso3 && iso3 === selectedRef.current) return ALT_SELECTED;
+        return iso3 && statusRef.current[iso3] ? ALT_MARKED : ALT_LAND;
       });
 
     if (selectedIso3 && selectedIso3 !== previous) {
       const feature = featuresRef.current.find((f) => f.properties.iso3 === selectedIso3);
       const shape = feature ? shapeOf(feature.geometry) : null;
       if (shape) {
-        const tiny = shape.extent < TINY_COUNTRY_DEG;
+        // Zoom in roughly to the country's size, so tiny states and their
+        // routes are actually visible (pinch to zoom out again).
+        const target = Math.max(0.12, Math.min(1.6, shape.extent / 12));
         globe.controls().autoRotate = false;
         globe.pointOfView(
-          { ...shape.centre, altitude: Math.min(globe.pointOfView().altitude, tiny ? 0.6 : 1.6) },
-          700
+          { ...shape.centre, altitude: Math.min(globe.pointOfView().altitude, target) },
+          900
         );
       }
     }

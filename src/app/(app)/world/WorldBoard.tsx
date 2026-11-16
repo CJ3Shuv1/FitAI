@@ -50,7 +50,7 @@ export default function WorldBoard({
       initialEntries.flatMap((e) =>
         e.routes
           .filter((r) => r.points && r.points.length >= 2)
-          .map((r) => ({ iso3: e.iso3, title: r.title, points: r.points! }))
+          .map((r) => ({ iso3: e.iso3, title: r.title, points: r.path ?? r.points! }))
       ),
     [initialEntries]
   );
