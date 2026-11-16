@@ -59,7 +59,9 @@ export async function loadWorld(supabase: SupabaseClient, userId: string): Promi
   }
 
   const entries = (data as WorldRow[]).map(rowToEntry);
-  const paths = entries.flatMap((e) => e.photos.map((p) => p.path));
+  const paths = entries.flatMap((e) =>
+    e.photos.flatMap((p) => (p.thumb ? [p.path, p.thumb] : [p.path]))
+  );
   const photoUrls: Record<string, string> = {};
 
   if (paths.length > 0) {

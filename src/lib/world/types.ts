@@ -7,7 +7,9 @@ export type PhotoRef = {
   path: string;
   w: number;
   h: number;
-  /** Where the photo was taken; drawn as a marker on the globe. */
+  /** ~120px preview next to `path` (<uuid>_t.jpg), used as the globe marker. */
+  thumb?: string;
+  /** Where the photo was taken (EXIF GPS or entered by hand); drawn on the globe. */
   loc?: LatLng & { url: string };
 };
 

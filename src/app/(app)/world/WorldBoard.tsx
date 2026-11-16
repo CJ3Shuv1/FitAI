@@ -73,15 +73,25 @@ export default function WorldBoard({
             iso3: e.iso3,
             kind: "photo" as const,
             label: `Foto aus ${countryName(e.iso3)}`,
+            photoPath: p.path,
+            thumbUrl: photoUrls[p.thumb ?? ""] ?? photoUrls[p.path],
           })),
       ]),
-    [initialEntries]
+    [initialEntries, photoUrls]
   );
+  const [openPhoto, setOpenPhoto] = useState<string | null>(null);
+  const selectFromGlobe = useCallback((iso3: string, photoPath?: string) => {
+    setOpenPhoto(photoPath ?? null);
+    setSelected(iso3);
+  }, []);
 
   const visited = initialEntries.filter((e) => e.status === "visited").length;
   const percent = (visited / WORLD_COUNTRY_TOTAL) * 100;
   const km = initialEntries.reduce((sum, e) => sum + (e.km ?? 0), 0);
-  const closePanel = useCallback(() => setSelected(null), []);
+  const closePanel = useCallback(() => {
+    setSelected(null);
+    setOpenPhoto(null);
+  }, []);
   const closeSearch = useCallback(() => setShowSearch(false), []);
 
   return (
@@ -139,7 +149,7 @@ export default function WorldBoard({
         selectedIso3={selected}
         routes={globeRoutes}
         markers={globeMarkers}
-        onSelect={setSelected}
+        onSelect={selectFromGlobe}
       />
 
       {initialEntries.length === 0 ? (
@@ -169,7 +179,7 @@ export default function WorldBoard({
                 return (
                   <li key={e.iso3}>
                     <button
-                      onClick={() => setSelected(e.iso3)}
+                      onClick={() => selectFromGlobe(e.iso3)}
                       className="flex w-full items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-3.5 py-3 text-left"
                     >
                       <span
@@ -205,10 +215,11 @@ export default function WorldBoard({
       {selected && (
         <CountryPanel
           // Remount once the saved entry arrives, so the form starts from it.
-          key={`${selected}:${byIso3[selected] ? "saved" : "new"}`}
+          key={`${selected}:${byIso3[selected] ? "saved" : "new"}:${openPhoto ?? ""}`}
           iso3={selected}
           entry={byIso3[selected]}
           photoUrls={photoUrls}
+          initialPhoto={openPhoto}
           onClose={closePanel}
           onChanged={() => router.refresh()}
           showToast={showToast}

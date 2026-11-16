@@ -14,11 +14,12 @@ export type GlobeMarker = LatLng & {
   iso3: string;
   kind: "place" | "photo";
   label: string;
+  /** Photo markers: storage path (to open it) and preview image URL. */
+  photoPath?: string;
+  thumbUrl?: string;
 };
-type RenderedMarker = LatLng & {
-  iso3: string;
-  kind: "place" | "photo" | "country";
-  label: string;
+type RenderedMarker = Omit<GlobeMarker, "kind"> & {
+  kind: GlobeMarker["kind"] | "country";
   color?: string;
 };
 
@@ -89,7 +90,7 @@ export default function GlobeView({
   selectedIso3: string | null;
   routes: GlobeRoute[];
   markers: GlobeMarker[];
-  onSelect: (iso3: string) => void;
+  onSelect: (iso3: string, photoPath?: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeInstance | null>(null);
@@ -193,6 +194,16 @@ export default function GlobeView({
             if (m.kind === "country") {
               dot.style.cssText =
                 base + `width:14px;height:14px;background:${m.color};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5);`;
+            } else if (m.kind === "photo" && m.thumbUrl) {
+              // Tiny round preview of the photo itself.
+              const img = document.createElement("img");
+              img.src = m.thumbUrl;
+              img.alt = "";
+              img.decoding = "async";
+              img.style.cssText = "width:100%;height:100%;object-fit:cover;border-radius:50%;";
+              dot.appendChild(img);
+              dot.style.cssText =
+                base + "width:30px;height:30px;overflow:hidden;background:#000;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.6);";
             } else {
               dot.textContent = m.kind === "photo" ? "📷" : "📍";
               dot.style.cssText =
@@ -200,7 +211,7 @@ export default function GlobeView({
             }
             dot.addEventListener("click", (e) => {
               e.stopPropagation();
-              onSelectRef.current(m.iso3);
+              onSelectRef.current(m.iso3, m.photoPath);
             });
             return dot;
           });

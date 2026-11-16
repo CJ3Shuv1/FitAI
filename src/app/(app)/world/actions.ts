@@ -137,7 +137,7 @@ export async function deleteCountry(iso3: string): Promise<Result> {
     .eq("iso3", iso3)
     .maybeSingle();
 
-  const paths = ((row?.photos as PhotoRef[] | null) ?? []).map((p) => p.path);
+  const paths = ((row?.photos as PhotoRef[] | null) ?? []).flatMap((p) => filesOf(p));
   if (paths.length > 0) {
     await supabase.storage.from(WORLD_PHOTO_BUCKET).remove(paths);
   }
@@ -178,22 +178,56 @@ async function updatePhotos(
   return done();
 }
 
-/** Records already-uploaded photos (see lib/world/photoStore) on the entry. */
-export async function addPhotos(iso3: string, refs: PhotoRef[]): Promise<Result> {
+const filesOf = (p: PhotoRef) => (p.thumb ? [p.path, p.thumb] : [p.path]);
+
+const mapsUrl = (pos: LatLng) => `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
+
+const validPos = (pos: unknown): pos is LatLng => {
+  const p = pos as LatLng | null;
+  return (
+    !!p &&
+    typeof p.lat === "number" &&
+    typeof p.lng === "number" &&
+    Math.abs(p.lat) <= 90 &&
+    Math.abs(p.lng) <= 180
+  );
+};
+
+/**
+ * Records already-uploaded photos (see lib/world/photoStore) on the entry.
+ * `gps` is the position read from the photo's EXIF data, if it had one.
+ */
+export async function addPhotos(
+  iso3: string,
+  uploads: { path: string; thumb: string; w: number; h: number; gps: LatLng | null }[]
+): Promise<Result> {
   return updatePhotos(iso3, (photos, userId) => {
     const prefix = `${userId}/${iso3}/`;
-    if (refs.some((r) => !r.path.startsWith(prefix))) return { error: "Ungültiger Foto-Pfad." };
-    return [...photos, ...refs.map((r) => ({ path: r.path, w: r.w, h: r.h }))];
+    const bad = uploads.some(
+      (u) => !u.path.startsWith(prefix) || (u.thumb !== "" && !u.thumb.startsWith(prefix))
+    );
+    if (bad) return { error: "Ungültiger Foto-Pfad." };
+    const added: PhotoRef[] = uploads.map((u) => ({
+      path: u.path,
+      w: u.w,
+      h: u.h,
+      ...(u.thumb ? { thumb: u.thumb } : {}),
+      ...(validPos(u.gps) ? { loc: { lat: u.gps.lat, lng: u.gps.lng, url: mapsUrl(u.gps) } } : {}),
+    }));
+    return [...photos, ...added];
   });
 }
 
 export async function removePhoto(iso3: string, path: string): Promise<Result> {
-  const result = await updatePhotos(iso3, (photos) => photos.filter((p) => p.path !== path));
-  if ("ok" in result) {
+  let removed: PhotoRef | undefined;
+  const result = await updatePhotos(iso3, (photos) => {
+    removed = photos.find((p) => p.path === path);
+    return photos.filter((p) => p.path !== path);
+  });
+  if ("ok" in result && removed) {
     const { supabase, user } = await requireUser();
-    if (path.startsWith(`${user.id}/`)) {
-      await supabase.storage.from(WORLD_PHOTO_BUCKET).remove([path]);
-    }
+    const files = filesOf(removed).filter((f) => f.startsWith(`${user.id}/`));
+    if (files.length) await supabase.storage.from(WORLD_PHOTO_BUCKET).remove(files);
   }
   return result;
 }
@@ -211,8 +245,8 @@ export async function setPhotoLocation(
 
   if (location && "position" in location) {
     const { lat, lng } = location.position;
-    if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) return { error: "Ungültige Position." };
-    loc = { lat, lng, url: `https://www.google.com/maps?q=${lat},${lng}` };
+    if (!validPos(location.position)) return { error: "Ungültige Position." };
+    loc = { lat, lng, url: mapsUrl({ lat, lng }) };
   } else if (location) {
     const link = location.link.trim();
     if (!isLinkOrCoords(link)) {
@@ -220,17 +254,14 @@ export async function setPhotoLocation(
     }
     const pos = (await resolveMapsLink(link))[0];
     if (!pos) return { error: "In diesem Link wurden keine Koordinaten gefunden." };
-    loc = {
-      ...pos,
-      url: /^https?:\/\//i.test(link) ? link : `https://www.google.com/maps?q=${pos.lat},${pos.lng}`,
-    };
+    loc = { ...pos, url: /^https?:\/\//i.test(link) ? link : mapsUrl(pos) };
   }
 
   return updatePhotos(iso3, (photos) =>
     photos.map((p) => {
       if (p.path !== path) return p;
-      const { path: pPath, w, h } = p;
-      return loc ? { path: pPath, w, h, loc } : { path: pPath, w, h };
+      const { loc: _old, ...rest } = p; // eslint-disable-line @typescript-eslint/no-unused-vars
+      return loc ? { ...rest, loc } : rest;
     })
   );
 }

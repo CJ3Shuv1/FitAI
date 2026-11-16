@@ -110,6 +110,7 @@ export default function CountryPanel({
   iso3,
   entry,
   photoUrls,
+  initialPhoto,
   onClose,
   onChanged,
   showToast,
@@ -117,6 +118,8 @@ export default function CountryPanel({
   iso3: string;
   entry: CountryEntry | undefined;
   photoUrls: Record<string, string>;
+  /** Opens this photo right away (tapped on the globe). */
+  initialPhoto?: string | null;
   onClose: () => void;
   onChanged: () => void;
   showToast: (msg: string) => void;
@@ -131,7 +134,7 @@ export default function CountryPanel({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [places, setPlaces] = useState<WorldPlace[]>(entry?.places ?? []);
-  const [lightboxPath, setLightboxPath] = useState<string | null>(null);
+  const [lightboxPath, setLightboxPath] = useState<string | null>(initialPhoto ?? null);
   const [locInput, setLocInput] = useState("");
   const [locBusy, setLocBusy] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -224,11 +227,20 @@ export default function CountryPanel({
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const refs = await uploadCountryPhotos(iso3, Array.from(files));
-      const result = await addPhotos(iso3, refs);
+      const uploads = await uploadCountryPhotos(iso3, Array.from(files));
+      const result = await addPhotos(iso3, uploads);
       if ("error" in result) showToast(result.error);
       else {
-        showToast(refs.length === 1 ? "Foto gespeichert" : `${refs.length} Fotos gespeichert`);
+        const n = uploads.length;
+        const located = uploads.filter((u) => u.gps).length;
+        const saved = n === 1 ? "Foto gespeichert" : `${n} Fotos gespeichert`;
+        showToast(
+          located === 0
+            ? `${saved} – kein Standort in den Bilddaten, du kannst ihn im Foto nachtragen.`
+            : located === n
+              ? `${saved} · Standort aus den Bilddaten übernommen 📍`
+              : `${saved} · ${located} davon mit Standort aus den Bilddaten 📍`
+        );
         onChanged();
       }
     } catch (err) {
