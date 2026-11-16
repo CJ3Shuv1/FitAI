@@ -272,6 +272,45 @@ async function summarizeSleep(
 }
 
 // ---------------------------------------------------------------------
+// Meine Welt
+// ---------------------------------------------------------------------
+type WorldSnapshot = { visited: number; planned: number; wish: number };
+
+async function summarizeWorld(
+  supabase: SupabaseClient,
+  userId: string,
+  previousSnapshot: Record<string, unknown> | null
+): Promise<ModuleSummary | null> {
+  const { data: rows } = await supabase
+    .from("world_countries")
+    .select("status, km")
+    .eq("user_id", userId);
+
+  if (!rows || rows.length === 0) return null;
+
+  const count = (status: string) => rows.filter((r) => r.status === status).length;
+  const snapshot: WorldSnapshot = {
+    visited: count("visited"),
+    planned: count("planned"),
+    wish: count("wish"),
+  };
+  const km = rows.reduce((sum, r) => sum + (Number(r.km) || 0), 0);
+
+  const prevWorld = previousSnapshot as WorldSnapshot | null;
+  const delta = prevWorld ? fmtDelta(snapshot.visited - prevWorld.visited) : null;
+
+  const text = [
+    `${snapshot.visited} Länder besucht, ${snapshot.planned} geplant, ${snapshot.wish} auf der Wunschliste.`,
+    km > 0 ? `${km} km gefahren.` : "",
+    delta ? `${delta} besuchte Länder seit letzter Analyse.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return { key: "world", label: "Meine Welt", emoji: "🌍", text, snapshot };
+}
+
+// ---------------------------------------------------------------------
 // The registry. To wire up a future tab into the Gesamtanalyse, add one
 // more module here — /analysis itself never needs to change, it just
 // iterates whatever is registered and hands each one the previous run's
@@ -282,4 +321,5 @@ export const ANALYSIS_MODULES: AnalysisModule[] = [
   { key: "nutrition", label: "Ernährung", emoji: "🍽", summarize: summarizeNutrition },
   { key: "sleep", label: "Schlaf", emoji: "🌙", summarize: summarizeSleep },
   { key: "books", label: "Bücher", emoji: "📚", summarize: summarizeBooks },
+  { key: "world", label: "Meine Welt", emoji: "🌍", summarize: summarizeWorld },
 ];

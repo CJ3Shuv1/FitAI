@@ -7,7 +7,7 @@ export default async function HubPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ count: exerciseCount }, { count: nutritionCount }, { count: bookCount }, { count: sleepCount }] =
+  const [{ count: exerciseCount }, { count: nutritionCount }, { count: bookCount }, { count: sleepCount }, { count: worldCount }] =
     await Promise.all([
       supabase
         .from("exercises")
@@ -25,6 +25,11 @@ export default async function HubPage() {
         .from("sleep_log")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user!.id),
+      supabase
+        .from("world_countries")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .eq("status", "visited"),
     ]);
 
   return (
@@ -76,18 +81,24 @@ export default async function HubPage() {
           textClass="text-[#EDEAF9]"
           statClass="text-[#EDEAF9]/50"
         />
-        <Link
+        <HubTile
+          href="/world"
+          emoji="🌍"
+          title="Meine Welt"
+          stat={`${worldCount ?? 0} Länder`}
+          className="bg-gradient-to-br from-[#16404A] via-[#1F5C66] to-[#0F2A33]"
+          textClass="text-[#E6F6F8]"
+          statClass="text-[#E6F6F8]/55"
+        />
+        <HubTile
           href="/analysis"
-          className="col-span-2 flex items-center gap-3 overflow-hidden rounded-2xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 transition-transform active:scale-[0.98]"
-        >
-          <span className="text-2xl">📊</span>
-          <div className="min-w-0">
-            <div className="text-base font-black tracking-tight">Gesamtanalyse</div>
-            <div className="truncate text-[11.5px] text-[var(--text-faint)]">
-              KI-Blick über alle Bereiche zusammen
-            </div>
-          </div>
-        </Link>
+          emoji="📊"
+          title="Analyse"
+          stat="KI-Gesamtblick"
+          className="border border-[var(--hairline)] bg-[var(--surface)]"
+          textClass="text-[var(--text)]"
+          statClass="text-[var(--text-faint)]"
+        />
       </div>
     </div>
   );

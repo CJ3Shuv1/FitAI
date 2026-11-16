@@ -14,6 +14,7 @@ const ONBOARDING_EXEMPT_PATHS = [
   "/reading",
   "/analysis",
   "/sleep",
+  "/world",
 ];
 
 export async function updateSession(request: NextRequest) {
